@@ -23,7 +23,6 @@ export interface Class {
   id: string;
   name: string;
   grade: '10' | '11' | '12';
-  subject: string;
   description?: string | null;
   class_code: string;
   is_active: boolean;

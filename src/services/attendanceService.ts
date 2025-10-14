@@ -26,6 +26,20 @@ export const attendanceService = {
     return data;
   },
 
+  async getAttendanceByClassAndDate(classId: string, date: string) {
+    const { data, error } = await supabase
+      .from('attendances')
+      .select(`
+        *,
+        student:students(full_name, email)
+      `)
+      .eq('class_id', classId)
+      .eq('date', date);
+
+    if (error) throw error;
+    return data || [];
+  },
+
   async getAttendanceHistory(classId: string, startDate?: string, endDate?: string) {
     const query = supabase
       .from('attendances')
@@ -48,7 +62,33 @@ export const attendanceService = {
     return data;
   },
 
-  async markAttendance(
+  async markAttendance(attendanceData: {
+    student_id: string;
+    class_id: string;
+    date: string;
+    status: 'present' | 'absent' | 'sick' | 'permission';
+    notes?: string;
+    marked_by: string;
+  }) {
+    const { data, error } = await supabase
+      .from('attendances')
+      .insert(attendanceData)
+      .select();
+
+    if (error) throw error;
+
+    await supabase.from('activity_logs').insert({
+      teacher_id: attendanceData.marked_by,
+      action: 'mark_attendance',
+      entity_type: 'attendance',
+      entity_id: attendanceData.class_id,
+      description: `Marked attendance for ${attendanceData.date}`,
+    });
+
+    return data;
+  },
+
+  async markAttendanceBatch(
     classId: string,
     date: string,
     attendanceData: Array<{

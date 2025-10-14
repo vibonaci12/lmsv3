@@ -24,26 +24,25 @@ export const studentAuthService = {
   },
 
   async createStudent(
-    email: string,
-    fullName: string,
-    birthDate: string,
-    phone: string | null,
-    createdBy: string
+    studentData: {
+      full_name: string;
+      email: string;
+      birth_date: string;
+      address?: string;
+    },
+    password: string
   ): Promise<Student> {
-    const passwordHash = await bcrypt.hash(
-      birthDate.replace(/\//g, ''),
-      10
-    );
+    const passwordHash = await bcrypt.hash(password, 10);
 
     const { data, error } = await supabase
       .from('students')
       .insert({
-        email,
-        full_name: fullName,
+        email: studentData.email,
+        full_name: studentData.full_name,
         password_hash: passwordHash,
-        birth_date: birthDate,
-        phone,
-        created_by: createdBy,
+        birth_date: studentData.birth_date,
+        address: studentData.address,
+        is_active: true,
       })
       .select()
       .single();

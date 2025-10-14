@@ -13,12 +13,12 @@ import {
   ActionIcon,
   Modal,
   TextInput,
-  Select,
   SimpleGrid,
   Paper,
   Avatar,
   Menu,
-  Alert
+  Alert,
+  DateInput
 } from '@mantine/core';
 import { 
   IconArrowLeft,
@@ -29,17 +29,20 @@ import {
   IconEdit,
   IconTrash,
   IconMail,
-  IconPhone,
-  IconCalendar
+  IconCalendar,
+  IconUser,
+  IconKey
 } from '@tabler/icons-react';
 import { useForm } from '@mantine/form';
 import { useAuth } from '../../contexts/AuthContext';
 import { Student } from '../../types';
 import { classService } from '../../services/classService';
 import { studentService } from '../../services/studentService';
+import { studentAuthService } from '../../services/studentAuthService';
 import { LoadingSpinner, EmptyState, ConfirmDialog } from '../../components';
 import { notifications } from '@mantine/notifications';
 import { formatGrade } from '../../utils/romanNumerals';
+import dayjs from 'dayjs';
 
 export function ClassStudents() {
   const { id } = useParams<{ id: string }>();
@@ -50,23 +53,28 @@ export function ClassStudents() {
   const [loading, setLoading] = useState(true);
   const [classData, setClassData] = useState<any>(null);
   const [students, setStudents] = useState<Student[]>([]);
-  const [allStudents, setAllStudents] = useState<Student[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [addModalOpen, setAddModalOpen] = useState(false);
+  const [editModalOpen, setEditModalOpen] = useState(false);
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
   const [selectedStudent, setSelectedStudent] = useState<Student | null>(null);
 
-  const addForm = useForm({
+  const form = useForm({
     initialValues: {
-      studentId: '',
+      full_name: '',
+      birth_date: '',
+      address: '',
     },
     validate: {
-      studentId: (value) => (!value ? 'Pilih siswa' : null),
+      full_name: (value) => (!value ? 'Nama lengkap harus diisi' : null),
+      birth_date: (value) => (!value ? 'Tanggal lahir harus diisi' : null),
     },
   });
 
   useEffect(() => {
-    loadData();
+    if (id) {
+      loadData();
+    }
   }, [id]);
 
   const loadData = async () => {
@@ -74,22 +82,13 @@ export function ClassStudents() {
 
     try {
       setLoading(true);
-      const [classInfo, allStudentsData] = await Promise.all([
-        classService.getClassById(id),
-        studentService.getAllStudents()
-      ]);
-
+      const classInfo = await classService.getClassById(id);
+      
       // Get enrolled students
       const enrolledStudents = classInfo.class_students?.map((cs: any) => cs.student) || [];
       
-      // Filter out already enrolled students
-      const availableStudents = allStudentsData.filter(
-        student => !enrolledStudents.some((enrolled: Student) => enrolled.id === student.id)
-      );
-
       setClassData(classInfo);
       setStudents(enrolledStudents);
-      setAllStudents(availableStudents);
     } catch (error) {
       console.error('Error loading data:', error);
       notifications.show({
@@ -102,16 +101,55 @@ export function ClassStudents() {
     }
   };
 
-  const handleAddStudent = async (values: typeof addForm.values) => {
+  const generateShortEmail = (fullName: string, birthDate: string) => {
+    // Generate short email from name and birth date
+    const name = fullName.toLowerCase()
+      .replace(/\s+/g, '') // Remove spaces
+      .replace(/[^a-z]/g, '') // Remove non-alphabetic characters
+      .substring(0, 6); // Limit to 6 characters for shorter email
+    
+    // Parse DD/MM/YYYY format
+    const [day, month, year] = birthDate.split('/');
+    const birthYear = year.substring(2); // Get last 2 digits
+    return `${name}${birthYear}${month}@s.school`; // Very short domain
+  };
+
+  const generatePassword = (birthDate: string) => {
+    // Generate password from birth date (DDMMYYYY)
+    // Convert DD/MM/YYYY to DDMMYYYY
+    return birthDate.replace(/\//g, '');
+  };
+
+  const handleAddStudent = async (values: typeof form.values) => {
     try {
-      await classService.enrollStudent(id!, values.studentId);
+      const email = generateShortEmail(values.full_name, values.birth_date);
+      const password = generatePassword(values.birth_date);
+      
+      // Create student account
+      // Convert DD/MM/YYYY to YYYY-MM-DD for database
+      const [day, month, year] = values.birth_date.split('/');
+      const dbDate = `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`;
+      
+      const studentData = {
+        full_name: values.full_name,
+        email: email,
+        birth_date: dbDate,
+        address: values.address,
+      };
+
+      const newStudent = await studentAuthService.createStudent(studentData, password);
+      
+      // Enroll student in class
+      await classService.enrollStudent(id!, newStudent.id);
+      
       notifications.show({
         title: 'Berhasil',
-        message: 'Siswa berhasil ditambahkan ke kelas',
+        message: `Siswa berhasil ditambahkan. Email: ${email}, Password: ${password}`,
         color: 'green',
       });
+      
       setAddModalOpen(false);
-      addForm.reset();
+      form.reset();
       loadData();
     } catch (error: any) {
       notifications.show({
@@ -122,26 +160,84 @@ export function ClassStudents() {
     }
   };
 
-  const handleRemoveStudent = async () => {
+  const handleEditStudent = async (values: typeof form.values) => {
     if (!selectedStudent) return;
 
     try {
-      await classService.unenrollStudent(id!, selectedStudent.id);
+      const email = generateShortEmail(values.full_name, values.birth_date);
+      
+      // Convert DD/MM/YYYY to YYYY-MM-DD for database
+      const [day, month, year] = values.birth_date.split('/');
+      const dbDate = `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`;
+      
+      const updateData = {
+        full_name: values.full_name,
+        email: email,
+        birth_date: dbDate,
+        address: values.address,
+      };
+
+      await studentService.updateStudent(selectedStudent.id, updateData);
+      
       notifications.show({
         title: 'Berhasil',
-        message: 'Siswa berhasil dikeluarkan dari kelas',
+        message: 'Data siswa berhasil diperbarui',
         color: 'green',
       });
+      
+      setEditModalOpen(false);
+      setSelectedStudent(null);
+      form.reset();
+      loadData();
+    } catch (error: any) {
+      notifications.show({
+        title: 'Error',
+        message: error.message || 'Gagal memperbarui data siswa',
+        color: 'red',
+      });
+    }
+  };
+
+  const handleDeleteStudent = async () => {
+    if (!selectedStudent) return;
+
+    try {
+      // Remove from class first
+      await classService.unenrollStudent(id!, selectedStudent.id);
+      
+      // Then delete the student
+      await studentService.deleteStudent(selectedStudent.id);
+      
+      notifications.show({
+        title: 'Berhasil',
+        message: 'Siswa berhasil dihapus',
+        color: 'green',
+      });
+      
       setDeleteModalOpen(false);
       setSelectedStudent(null);
       loadData();
     } catch (error: any) {
       notifications.show({
         title: 'Error',
-        message: error.message || 'Gagal mengeluarkan siswa',
+        message: error.message || 'Gagal menghapus siswa',
         color: 'red',
       });
     }
+  };
+
+  const openEditModal = (student: Student) => {
+    setSelectedStudent(student);
+    // Convert YYYY-MM-DD to DD/MM/YYYY for display
+    const [year, month, day] = student.birth_date.split('-');
+    const displayDate = `${day}/${month}/${year}`;
+    
+    form.setValues({
+      full_name: student.full_name,
+      birth_date: displayDate,
+      address: student.address || '',
+    });
+    setEditModalOpen(true);
   };
 
   const filteredStudents = students.filter(student =>
@@ -190,7 +286,6 @@ export function ClassStudents() {
           <Button
             leftSection={<IconPlus size={16} />}
             onClick={() => setAddModalOpen(true)}
-            disabled={allStudents.length === 0}
           >
             Tambah Siswa
           </Button>
@@ -211,17 +306,17 @@ export function ClassStudents() {
             <Group gap="md">
               <IconCalendar size={32} color="var(--mantine-color-green-6)" />
               <div>
-                <Text size="lg" fw={600}>{allStudents.length}</Text>
-                <Text size="sm" c="dimmed">Siswa Tersedia</Text>
+                <Text size="lg" fw={600}>{classData.class_code}</Text>
+                <Text size="sm" c="dimmed">Kode Kelas</Text>
               </div>
             </Group>
           </Paper>
           <Paper p="md" withBorder>
             <Group gap="md">
-              <IconUsers size={32} color="var(--mantine-color-orange-6)" />
+              <IconUser size={32} color="var(--mantine-color-orange-6)" />
               <div>
-                <Text size="lg" fw={600}>{classData.class_code}</Text>
-                <Text size="sm" c="dimmed">Kode Kelas</Text>
+                <Text size="lg" fw={600}>{formatGrade(classData.grade)}</Text>
+                <Text size="sm" c="dimmed">Tingkat Kelas</Text>
               </div>
             </Group>
           </Paper>
@@ -254,8 +349,9 @@ export function ClassStudents() {
                     <Table.Th>Siswa</Table.Th>
                     <Table.Th>Email</Table.Th>
                     <Table.Th>Tanggal Lahir</Table.Th>
+                    <Table.Th>Alamat</Table.Th>
                     <Table.Th>Status</Table.Th>
-                    <Table.Th width={50}></Table.Th>
+                    <Table.Th width={100}></Table.Th>
                   </Table.Tr>
                 </Table.Thead>
                 <Table.Tbody>
@@ -268,7 +364,7 @@ export function ClassStudents() {
                           </Avatar>
                           <div>
                             <Text fw={500}>{student.full_name}</Text>
-                            <Text size="sm" c="dimmed">ID: {student.id}</Text>
+                            <Text size="sm" c="dimmed">ID: {student.id.substring(0, 8)}...</Text>
                           </div>
                         </Group>
                       </Table.Td>
@@ -280,12 +376,17 @@ export function ClassStudents() {
                       </Table.Td>
                       <Table.Td>
                         <Text size="sm">
-                          {new Date(student.birth_date).toLocaleDateString('id-ID')}
+                          {dayjs(student.birth_date).format('DD/MM/YYYY')}
+                        </Text>
+                      </Table.Td>
+                      <Table.Td>
+                        <Text size="sm">
+                          {student.address || '-'}
                         </Text>
                       </Table.Td>
                       <Table.Td>
                         <Badge color="green" variant="light" size="sm">
-                          Terdaftar
+                          Aktif
                         </Badge>
                       </Table.Td>
                       <Table.Td>
@@ -297,6 +398,13 @@ export function ClassStudents() {
                           </Menu.Target>
                           <Menu.Dropdown>
                             <Menu.Item
+                              leftSection={<IconEdit size={14} />}
+                              onClick={() => openEditModal(student)}
+                            >
+                              Edit
+                            </Menu.Item>
+                            <Menu.Divider />
+                            <Menu.Item
                               color="red"
                               leftSection={<IconTrash size={14} />}
                               onClick={() => {
@@ -304,7 +412,7 @@ export function ClassStudents() {
                                 setDeleteModalOpen(true);
                               }}
                             >
-                              Keluarkan dari Kelas
+                              Hapus
                             </Menu.Item>
                           </Menu.Dropdown>
                         </Menu>
@@ -321,8 +429,8 @@ export function ClassStudents() {
                   "Tidak ada siswa yang sesuai dengan pencarian" : 
                   "Belum ada siswa yang terdaftar di kelas ini"
                 }
-                actionLabel={allStudents.length > 0 ? "Tambah Siswa" : undefined}
-                onAction={allStudents.length > 0 ? () => setAddModalOpen(true) : undefined}
+                actionLabel="Tambah Siswa"
+                onAction={() => setAddModalOpen(true)}
               />
             )}
           </Stack>
@@ -332,21 +440,40 @@ export function ClassStudents() {
         <Modal
           opened={addModalOpen}
           onClose={() => setAddModalOpen(false)}
-          title="Tambah Siswa ke Kelas"
-          size="md"
+          title="Tambah Siswa Baru"
+          size="lg"
         >
-          <form onSubmit={addForm.onSubmit(handleAddStudent)}>
+          <form onSubmit={form.onSubmit(handleAddStudent)}>
             <Stack gap="md">
-              <Select
-                label="Pilih Siswa"
-                placeholder="Pilih siswa yang akan ditambahkan"
-                data={allStudents.map(student => ({
-                  value: student.id,
-                  label: `${student.full_name} (${student.email})`
-                }))}
-                searchable
+              <Alert color="blue" icon={<IconKey size={16} />}>
+                <Text size="sm">
+                  Email dan password akan digenerate otomatis dari nama dan tanggal lahir siswa.
+                  <br />
+                  <strong>Format Email:</strong> [nama6karakter][tahun][bulan]@s.school
+                  <br />
+                  <strong>Password:</strong> DDMMYYYY (tanggal lahir)
+                </Text>
+              </Alert>
+
+              <TextInput
+                label="Nama Lengkap"
+                placeholder="Masukkan nama lengkap siswa"
                 required
-                {...addForm.getInputProps('studentId')}
+                {...form.getInputProps('full_name')}
+              />
+
+              <TextInput
+                label="Tanggal Lahir"
+                placeholder="DD/MM/YYYY (contoh: 15/03/2005)"
+                required
+                {...form.getInputProps('birth_date')}
+              />
+
+
+              <TextInput
+                label="Alamat"
+                placeholder="Masukkan alamat (opsional)"
+                {...form.getInputProps('address')}
               />
 
               <Group justify="flex-end" gap="sm">
@@ -364,14 +491,65 @@ export function ClassStudents() {
           </form>
         </Modal>
 
+        {/* Edit Student Modal */}
+        <Modal
+          opened={editModalOpen}
+          onClose={() => setEditModalOpen(false)}
+          title="Edit Data Siswa"
+          size="lg"
+        >
+          <form onSubmit={form.onSubmit(handleEditStudent)}>
+            <Stack gap="md">
+              <Alert color="blue" icon={<IconMail size={16} />}>
+                <Text size="sm">
+                  Email akan diperbarui otomatis berdasarkan nama dan tanggal lahir yang baru.
+                </Text>
+              </Alert>
+
+              <TextInput
+                label="Nama Lengkap"
+                placeholder="Masukkan nama lengkap siswa"
+                required
+                {...form.getInputProps('full_name')}
+              />
+
+              <TextInput
+                label="Tanggal Lahir"
+                placeholder="DD/MM/YYYY (contoh: 15/03/2005)"
+                required
+                {...form.getInputProps('birth_date')}
+              />
+
+
+              <TextInput
+                label="Alamat"
+                placeholder="Masukkan alamat (opsional)"
+                {...form.getInputProps('address')}
+              />
+
+              <Group justify="flex-end" gap="sm">
+                <Button
+                  variant="subtle"
+                  onClick={() => setEditModalOpen(false)}
+                >
+                  Batal
+                </Button>
+                <Button type="submit">
+                  Simpan Perubahan
+                </Button>
+              </Group>
+            </Stack>
+          </form>
+        </Modal>
+
         {/* Delete Confirmation Modal */}
         <ConfirmDialog
           opened={deleteModalOpen}
           onClose={() => setDeleteModalOpen(false)}
-          onConfirm={handleRemoveStudent}
-          title="Keluarkan Siswa"
-          message={`Apakah Anda yakin ingin mengeluarkan ${selectedStudent?.full_name} dari kelas ini?`}
-          confirmLabel="Keluarkan"
+          onConfirm={handleDeleteStudent}
+          title="Hapus Siswa"
+          message={`Apakah Anda yakin ingin menghapus ${selectedStudent?.full_name}? Tindakan ini akan menghapus semua data siswa termasuk submission dan nilai.`}
+          confirmLabel="Hapus"
           cancelLabel="Batal"
           confirmColor="red"
         />

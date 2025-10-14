@@ -53,7 +53,9 @@ export function UnifiedLogin() {
     setStudentLoading(true);
 
     try {
-      await loginStudent(studentEmail, studentBirthDate);
+      // Convert DD/MM/YYYY to DDMMYYYY for password
+      const password = studentBirthDate.replace(/\//g, '');
+      await loginStudent(studentEmail, password);
       navigate('/student/dashboard');
     } catch (err: any) {
       setStudentError(err.message || 'Gagal login sebagai siswa');

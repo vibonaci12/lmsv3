@@ -8,7 +8,7 @@ export const classService = {
       .select(`
         *,
         created_by_teacher:teachers!classes_created_by_fkey(full_name),
-        student_count:class_students(count)
+        class_students(count)
       `)
       .order('created_at', { ascending: false });
 
@@ -19,7 +19,12 @@ export const classService = {
     const { data, error } = await query;
 
     if (error) throw error;
-    return data;
+    
+    // Transform the data to extract student_count properly
+    return data?.map(cls => ({
+      ...cls,
+      student_count: cls.class_students?.[0]?.count || 0
+    })) || [];
   },
 
   async getClassById(classId: string) {
@@ -44,7 +49,6 @@ export const classService = {
   async createClass(classData: {
     name: string;
     grade: '10' | '11' | '12';
-    subject: string;
     description?: string;
     class_code: string;
     created_by: string;

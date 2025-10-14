@@ -90,7 +90,7 @@ src/
 ├── /dashboard            → Teacher Dashboard
 ├── /classes              → Class List
 ├── /classes/:id          → Class Detail
-├── /classes/:id/students → Class Student Management
+├── /classes/:id/manage → Class Student Management
 ├── /classes/:id/attendance → Class Attendance Management
 ├── /students             → All Students
 ├── /assignments          → Assignment List

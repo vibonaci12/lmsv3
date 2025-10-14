@@ -11,10 +11,12 @@ import { TeacherDashboard } from './pages/teacher/TeacherDashboard';
 import { ClassList } from './pages/teacher/ClassList';
 import { ClassDetail } from './pages/teacher/ClassDetail';
 import { ClassStudents } from './pages/teacher/ClassStudents';
+import { ClassAssignments } from './pages/teacher/ClassAssignments';
 import { ClassAttendance } from './pages/teacher/ClassAttendance';
 import { AssignmentList } from './pages/teacher/AssignmentList';
 import { AssignmentDetail } from './pages/teacher/AssignmentDetail';
 import { StudentDashboard } from './pages/student/StudentDashboard';
+import { StudentProfile } from './pages/student/StudentProfile';
 
 import '@mantine/core/styles.css';
 import '@mantine/notifications/styles.css';
@@ -42,6 +44,7 @@ function App() {
               <Route path="classes" element={<ClassList />} />
               <Route path="classes/:id" element={<ClassDetail />} />
               <Route path="classes/:id/students" element={<ClassStudents />} />
+              <Route path="classes/:id/assignments" element={<ClassAssignments />} />
               <Route path="classes/:id/attendance" element={<ClassAttendance />} />
               <Route path="students" element={<div>Students Page</div>} />
               <Route path="assignments" element={<AssignmentList />} />
@@ -63,7 +66,7 @@ function App() {
               <Route path="classes" element={<div>Classes Page</div>} />
               <Route path="assignments" element={<div>Assignments Page</div>} />
               <Route path="grades" element={<div>Grades Page</div>} />
-              <Route path="profile" element={<div>Profile Page</div>} />
+              <Route path="profile" element={<StudentProfile />} />
               <Route index element={<Navigate to="/student/dashboard" replace />} />
             </Route>
 
