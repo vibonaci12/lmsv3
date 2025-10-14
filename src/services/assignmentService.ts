@@ -169,4 +169,44 @@ export const assignmentService = {
       description: `Deleted assignment`,
     });
   },
+
+  async getAssignmentsByClass(classId: string) {
+    const { data, error } = await supabase
+      .from('assignments')
+      .select(`
+        *,
+        questions(count),
+        submissions(count)
+      `)
+      .eq('class_id', classId)
+      .order('created_at', { ascending: false });
+
+    if (error) throw error;
+    return data;
+  },
+
+  async getClassAssignmentStats(classId: string) {
+    const { data, error } = await supabase
+      .from('assignments')
+      .select(`
+        id,
+        title,
+        deadline,
+        submissions(count)
+      `)
+      .eq('class_id', classId);
+
+    if (error) throw error;
+
+    const totalAssignments = data.length;
+    const totalSubmissions = data.reduce((sum, assignment) => sum + (assignment.submissions?.[0]?.count || 0), 0);
+    const pendingAssignments = data.filter(assignment => new Date(assignment.deadline) > new Date()).length;
+
+    return {
+      totalAssignments,
+      totalSubmissions,
+      pendingAssignments,
+      completedAssignments: totalAssignments - pendingAssignments
+    };
+  },
 };

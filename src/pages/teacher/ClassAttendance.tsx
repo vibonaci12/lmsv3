@@ -17,6 +17,18 @@ import {
   Alert,
   Table,
   Avatar,
+  TextInput,
+  Tabs,
+  Progress,
+  Divider,
+  Modal,
+  Flex,
+  Box,
+  ThemeIcon,
+  ScrollArea,
+  Tooltip,
+  Switch,
+  Radio
 } from '@mantine/core';
 import { DateInput as MantineDateInput } from '@mantine/dates';
 import { 
@@ -25,7 +37,22 @@ import {
   IconUsers,
   IconCheck,
   IconX,
-  IconClock
+  IconClock,
+  IconStethoscope,
+  IconFileText,
+  IconHistory,
+  IconTrendingUp,
+  IconBolt,
+  IconPlus,
+  IconMinus,
+  IconEdit,
+  IconTrash,
+  IconRefresh,
+  IconDownload,
+  IconFilter,
+  IconSearch,
+  IconEye,
+  IconEyeOff
 } from '@tabler/icons-react';
 import { useAuth } from '../../contexts/AuthContext';
 import { Student } from '../../types';
@@ -46,8 +73,13 @@ export function ClassAttendance() {
   const [classData, setClassData] = useState<any>(null);
   const [students, setStudents] = useState<Student[]>([]);
   const [selectedDate, setSelectedDate] = useState<Date | null>(new Date());
-  const [selectedStudents, setSelectedStudents] = useState<string[]>([]);
   const [attendanceHistory, setAttendanceHistory] = useState<any[]>([]);
+  const [attendanceStatuses, setAttendanceStatuses] = useState<Record<string, 'present' | 'absent' | 'sick' | 'permission'>>({});
+  const [attendanceNotes, setAttendanceNotes] = useState<Record<string, string>>({});
+  const [attendanceSummary, setAttendanceSummary] = useState<any>(null);
+  const [activeTab, setActiveTab] = useState<string>('today');
+  const [searchTerm, setSearchTerm] = useState('');
+  const [showOnlyAbsent, setShowOnlyAbsent] = useState(false);
 
   useEffect(() => {
     if (id) {
@@ -60,15 +92,24 @@ export function ClassAttendance() {
 
     try {
       setLoading(true);
-      const classInfo = await classService.getClassById(id);
       
-      // Get enrolled students
-      const enrolledStudents = classInfo.class_students?.map((cs: any) => cs.student) || [];
+      // Load class data and statistics in parallel
+      const [classInfo, assignmentStats, attendanceStats] = await Promise.all([
+        classService.getClassById(id),
+        attendanceService.getClassAttendanceStats(id),
+        attendanceService.getClassAttendanceStats(id)
+      ]);
+
+      // Get enrolled students (only active ones for attendance)
+      const enrolledStudents = classInfo.class_students
+        ?.map((cs: any) => cs.student)
+        .filter((student: any) => student && student.is_active) || [];
       
       setClassData(classInfo);
       setStudents(enrolledStudents);
+      setAttendanceSummary(attendanceStats);
       
-      // Load attendance history
+      // Load attendance history and summary
       await loadAttendanceHistory();
     } catch (error) {
       console.error('Error loading data:', error);
@@ -100,27 +141,46 @@ export function ClassAttendance() {
     }
   }, [selectedDate, id]);
 
-  const handleStudentToggle = (studentId: string) => {
-    setSelectedStudents(prev => 
-      prev.includes(studentId) 
-        ? prev.filter(id => id !== studentId)
-        : [...prev, studentId]
-    );
+
+  const handleStatusChange = (studentId: string, status: 'present' | 'absent' | 'sick' | 'permission') => {
+    const validStatuses = ['present', 'absent', 'sick', 'permission'];
+    if (!validStatuses.includes(status)) {
+      console.warn('Invalid attendance status:', status);
+      return;
+    }
+
+    setAttendanceStatuses(prev => ({
+      ...prev,
+      [studentId]: status
+    }));
   };
 
-  const handleSelectAll = () => {
-    if (selectedStudents.length === students.length) {
-      setSelectedStudents([]);
-    } else {
-      setSelectedStudents(students.map(s => s.id));
-    }
+  const handleNoteChange = (studentId: string, note: string) => {
+    setAttendanceNotes(prev => ({
+      ...prev,
+      [studentId]: note
+    }));
   };
+
+
 
   const handleSubmitAttendance = async () => {
-    if (!id || !selectedDate || selectedStudents.length === 0) {
+    if (!id || !selectedDate) {
       notifications.show({
         title: 'Error',
-        message: 'Pilih tanggal dan minimal satu siswa',
+        message: 'Pilih tanggal terlebih dahulu',
+        color: 'red',
+      });
+      return;
+    }
+
+    // Get all students with status
+    const studentsWithStatus = Object.keys(attendanceStatuses);
+    
+    if (studentsWithStatus.length === 0) {
+      notifications.show({
+        title: 'Error',
+        message: 'Pilih status absensi untuk minimal satu siswa',
         color: 'red',
       });
       return;
@@ -129,25 +189,30 @@ export function ClassAttendance() {
     try {
       const dateStr = dayjs(selectedDate).format('YYYY-MM-DD');
       
-      // Mark attendance for selected students
-      for (const studentId of selectedStudents) {
+      // Mark attendance for students with status
+      for (const studentId of studentsWithStatus) {
+        const status = attendanceStatuses[studentId];
+        const notes = attendanceNotes[studentId] || '';
+        
         await attendanceService.markAttendance({
           student_id: studentId,
           class_id: id,
           date: dateStr,
-          status: 'present',
+          status: status,
+          notes: notes,
           marked_by: teacher.id,
         });
       }
 
       notifications.show({
         title: 'Berhasil',
-        message: `Absensi berhasil dicatat untuk ${selectedStudents.length} siswa`,
+        message: `Absensi berhasil dicatat untuk ${studentsWithStatus.length} siswa`,
         color: 'green',
       });
 
-      setSelectedStudents([]);
-      loadAttendanceHistory();
+      setAttendanceStatuses({});
+      setAttendanceNotes({});
+      await loadAttendanceHistory();
     } catch (error: any) {
       notifications.show({
         title: 'Error',
@@ -160,6 +225,59 @@ export function ClassAttendance() {
   const getAttendanceStatus = (studentId: string) => {
     const attendance = attendanceHistory.find(a => a.student_id === studentId);
     return attendance ? attendance.status : null;
+  };
+
+  const getStatusColor = (status: string) => {
+    switch (status) {
+      case 'present': return 'green';
+      case 'absent': return 'red';
+      case 'sick': return 'yellow';
+      case 'permission': return 'blue';
+      default: return 'gray';
+    }
+  };
+
+  const getStatusIcon = (status: string) => {
+    switch (status) {
+      case 'present': return <IconCheck size={14} />;
+      case 'absent': return <IconX size={14} />;
+      case 'sick': return <IconStethoscope size={14} />;
+      case 'permission': return <IconFileText size={14} />;
+      default: return <IconClock size={14} />;
+    }
+  };
+
+  const getStatusLabel = (status: string) => {
+    switch (status) {
+      case 'present': return 'Hadir';
+      case 'absent': return 'Tidak Hadir';
+      case 'sick': return 'Sakit';
+      case 'permission': return 'Izin';
+      default: return 'Belum Absen';
+    }
+  };
+
+  // Filter students based on search and show only absent
+  const filteredStudents = students.filter(student => {
+    const matchesSearch = student.full_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                         student.email.toLowerCase().includes(searchTerm.toLowerCase());
+    
+    if (showOnlyAbsent) {
+      const attendanceStatus = getAttendanceStatus(student.id);
+      return matchesSearch && attendanceStatus === null;
+    }
+    
+    return matchesSearch;
+  });
+
+  // Calculate statistics
+  const todayStats = {
+    total: students.length,
+    present: attendanceHistory.filter(a => a.status === 'present').length,
+    absent: attendanceHistory.filter(a => a.status === 'absent').length,
+    sick: attendanceHistory.filter(a => a.status === 'sick').length,
+    permission: attendanceHistory.filter(a => a.status === 'permission').length,
+    notMarked: students.length - attendanceHistory.length
   };
 
   if (loading) {
@@ -199,169 +317,313 @@ export function ClassAttendance() {
               </Text>
             </div>
           </Group>
+          <Group gap="sm">
+            <Button
+              variant="light"
+              leftSection={<IconRefresh size={16} />}
+              onClick={loadData}
+            >
+              Refresh
+            </Button>
+            <Button
+              variant="light"
+              leftSection={<IconDownload size={16} />}
+              color="blue"
+            >
+              Export
+            </Button>
+          </Group>
         </Group>
 
-        {/* Stats */}
-        <SimpleGrid cols={{ base: 1, sm: 4 }}>
-          <Paper p="md" withBorder>
-            <Group gap="md">
-              <IconUsers size={32} color="var(--mantine-color-blue-6)" />
+        {/* Quick Stats */}
+        <SimpleGrid cols={{ base: 2, sm: 6 }}>
+          <Paper p="md" withBorder radius="md">
+            <Group gap="sm">
+              <ThemeIcon size="lg" variant="light" color="blue">
+                <IconUsers size={20} />
+              </ThemeIcon>
               <div>
-                <Text size="lg" fw={600}>{students.length}</Text>
-                <Text size="sm" c="dimmed">Total Siswa</Text>
+                <Text size="lg" fw={700}>{todayStats.total}</Text>
+                <Text size="xs" c="dimmed">Total Siswa</Text>
               </div>
             </Group>
           </Paper>
-          <Paper p="md" withBorder>
-            <Group gap="md">
-              <IconCheck size={32} color="var(--mantine-color-green-6)" />
+          
+          <Paper p="md" withBorder radius="md">
+            <Group gap="sm">
+              <ThemeIcon size="lg" variant="light" color="green">
+                <IconCheck size={20} />
+              </ThemeIcon>
               <div>
-                <Text size="lg" fw={600}>{selectedStudents.length}</Text>
-                <Text size="sm" c="dimmed">Dipilih</Text>
+                <Text size="lg" fw={700}>{todayStats.present}</Text>
+                <Text size="xs" c="dimmed">Hadir</Text>
               </div>
             </Group>
           </Paper>
-          <Paper p="md" withBorder>
-            <Group gap="md">
-              <IconCalendar size={32} color="var(--mantine-color-orange-6)" />
+          
+          <Paper p="md" withBorder radius="md">
+            <Group gap="sm">
+              <ThemeIcon size="lg" variant="light" color="red">
+                <IconX size={20} />
+              </ThemeIcon>
               <div>
-                <Text size="lg" fw={600}>{attendanceHistory.length}</Text>
-                <Text size="sm" c="dimmed">Sudah Absen</Text>
+                <Text size="lg" fw={700}>{todayStats.absent}</Text>
+                <Text size="xs" c="dimmed">Tidak Hadir</Text>
               </div>
             </Group>
           </Paper>
-          <Paper p="md" withBorder>
-            <Group gap="md">
-              <IconClock size={32} color="var(--mantine-color-purple-6)" />
+          
+          <Paper p="md" withBorder radius="md">
+            <Group gap="sm">
+              <ThemeIcon size="lg" variant="light" color="yellow">
+                <IconStethoscope size={20} />
+              </ThemeIcon>
               <div>
-                <Text size="lg" fw={600}>{students.length - attendanceHistory.length}</Text>
-                <Text size="sm" c="dimmed">Belum Absen</Text>
+                <Text size="lg" fw={700}>{todayStats.sick}</Text>
+                <Text size="xs" c="dimmed">Sakit</Text>
+              </div>
+            </Group>
+          </Paper>
+          
+          <Paper p="md" withBorder radius="md">
+            <Group gap="sm">
+              <ThemeIcon size="lg" variant="light" color="blue">
+                <IconFileText size={20} />
+              </ThemeIcon>
+              <div>
+                <Text size="lg" fw={700}>{todayStats.permission}</Text>
+                <Text size="xs" c="dimmed">Izin</Text>
+              </div>
+            </Group>
+          </Paper>
+          
+          <Paper p="md" withBorder radius="md">
+            <Group gap="sm">
+              <ThemeIcon size="lg" variant="light" color="gray">
+                <IconClock size={20} />
+              </ThemeIcon>
+              <div>
+                <Text size="lg" fw={700}>{todayStats.notMarked}</Text>
+                <Text size="xs" c="dimmed">Belum Absen</Text>
               </div>
             </Group>
           </Paper>
         </SimpleGrid>
 
-        {/* Date Selection */}
-        <Card withBorder>
-          <Stack gap="md">
-            <Text fw={600}>Pilih Tanggal Absensi</Text>
-            <Group gap="md">
-              <MantineDateInput
-                label="Tanggal"
-                placeholder="Pilih tanggal"
-                value={selectedDate}
-                onChange={setSelectedDate}
-                style={{ flex: 1 }}
-              />
-            </Group>
-          </Stack>
-        </Card>
-
-        {/* Student Selection */}
-        <Card withBorder>
+        {/* Progress Bar */}
+        <Card withBorder radius="md">
           <Stack gap="md">
             <Group justify="space-between">
-              <Text fw={600}>Daftar Siswa ({students.length})</Text>
-              <Group gap="sm">
-                <Button
-                  variant="light"
-                  size="sm"
-                  onClick={handleSelectAll}
-                >
-                  {selectedStudents.length === students.length ? 'Batal Pilih Semua' : 'Pilih Semua'}
-                </Button>
-                <Button
-                  onClick={handleSubmitAttendance}
-                  disabled={selectedStudents.length === 0}
-                >
-                  Catat Absensi ({selectedStudents.length})
-                </Button>
-              </Group>
+              <Text fw={600}>Progress Absensi Hari Ini</Text>
+              <Text size="sm" c="dimmed">
+                {attendanceHistory.length} dari {students.length} siswa
+              </Text>
             </Group>
-
-            {students.length > 0 ? (
-              <Table>
-                <Table.Thead>
-                  <Table.Tr>
-                    <Table.Th width={50}></Table.Th>
-                    <Table.Th>Siswa</Table.Th>
-                    <Table.Th>Email</Table.Th>
-                    <Table.Th>Status Absensi</Table.Th>
-                  </Table.Tr>
-                </Table.Thead>
-                <Table.Tbody>
-                  {students.map((student) => {
-                    const attendanceStatus = getAttendanceStatus(student.id);
-                    const isSelected = selectedStudents.includes(student.id);
-                    
-                    return (
-                      <Table.Tr key={student.id}>
-                        <Table.Td>
-                          <Checkbox
-                            checked={isSelected}
-                            onChange={() => handleStudentToggle(student.id)}
-                            disabled={attendanceStatus === 'present'}
-                          />
-                        </Table.Td>
-                        <Table.Td>
-                          <Group gap="sm">
-                            <Avatar size="sm" radius="xl" color="blue">
-                              {student.full_name.charAt(0)}
-                            </Avatar>
-                            <div>
-                              <Text fw={500}>{student.full_name}</Text>
-                              <Text size="sm" c="dimmed">ID: {student.id.substring(0, 8)}...</Text>
-                            </div>
-                          </Group>
-                        </Table.Td>
-                        <Table.Td>
-                          <Text size="sm">{student.email}</Text>
-                        </Table.Td>
-                        <Table.Td>
-                          {attendanceStatus === 'present' ? (
-                            <Badge color="green" variant="light" size="sm" leftSection={<IconCheck size={12} />}>
-                              Hadir
-                            </Badge>
-                          ) : (
-                            <Badge color="red" variant="light" size="sm" leftSection={<IconX size={12} />}>
-                              Tidak Hadir
-                            </Badge>
-                          )}
-                        </Table.Td>
-                      </Table.Tr>
-                    );
-                  })}
-                </Table.Tbody>
-              </Table>
-            ) : (
-              <EmptyState
-                icon={IconUsers}
-                title="Belum ada siswa"
-                description="Belum ada siswa yang terdaftar di kelas ini"
-                actionLabel="Kelola Siswa"
-                onAction={() => navigate(`/teacher/classes/${id}/students`)}
-              />
-            )}
+            <Progress 
+              value={(attendanceHistory.length / students.length) * 100} 
+              size="lg" 
+              radius="md"
+              color="green"
+            />
+            <Text size="sm" c="dimmed" ta="center">
+              {Math.round((attendanceHistory.length / students.length) * 100)}% selesai
+            </Text>
           </Stack>
         </Card>
 
-        {/* Attendance Summary */}
-        {attendanceHistory.length > 0 && (
-          <Card withBorder>
+        {/* Main Content */}
+        <Tabs value={activeTab} onChange={(value) => setActiveTab(value || 'today')}>
+          <Tabs.List>
+            <Tabs.Tab value="today" leftSection={<IconCalendar size={16} />}>
+              Absensi Hari Ini
+            </Tabs.Tab>
+            <Tabs.Tab value="history" leftSection={<IconHistory size={16} />}>
+              Riwayat
+            </Tabs.Tab>
+            <Tabs.Tab value="analytics" leftSection={<IconTrendingUp size={16} />}>
+              Analisis
+            </Tabs.Tab>
+          </Tabs.List>
+
+          <Tabs.Panel value="today" pt="md">
             <Stack gap="md">
-              <Text fw={600}>Ringkasan Absensi</Text>
-              <Alert color="blue" icon={<IconCalendar size={16} />}>
-                <Text size="sm">
-                  Tanggal: {dayjs(selectedDate).format('DD/MM/YYYY')}
-                  <br />
-                  Total Hadir: {attendanceHistory.length} dari {students.length} siswa
-                  <br />
-                  Persentase Kehadiran: {Math.round((attendanceHistory.length / students.length) * 100)}%
-                </Text>
-              </Alert>
+              {/* Date Selection */}
+              <Card withBorder radius="md">
+                <Group justify="space-between">
+                  <div>
+                    <Text fw={600}>Tanggal Absensi</Text>
+                    <Text size="sm" c="dimmed">Pilih tanggal untuk mencatat absensi</Text>
+                  </div>
+                  <MantineDateInput
+                    value={selectedDate}
+                    onChange={setSelectedDate}
+                    placeholder="Pilih tanggal"
+                    size="md"
+                    style={{ minWidth: 200 }}
+                  />
+                </Group>
+              </Card>
+
+              {/* Controls */}
+              <Card withBorder radius="md">
+                <Stack gap="md">
+                  <Group justify="space-between">
+                    <Text fw={600}>Kontrol Absensi</Text>
+                    <Switch
+                      label="Tampilkan yang belum absen"
+                      checked={showOnlyAbsent}
+                      onChange={(e) => setShowOnlyAbsent(e.currentTarget.checked)}
+                      size="sm"
+                    />
+                  </Group>
+
+                  <TextInput
+                    placeholder="Cari siswa..."
+                    leftSection={<IconSearch size={16} />}
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    style={{ maxWidth: 400 }}
+                  />
+
+                  {Object.keys(attendanceStatuses).length > 0 && (
+                    <Alert color="blue" icon={<IconBolt size={16} />}>
+                      <Group justify="space-between">
+                        <Text size="sm">
+                          {Object.keys(attendanceStatuses).length} siswa sudah dipilih statusnya
+                        </Text>
+                        <Button 
+                          size="xs" 
+                          onClick={handleSubmitAttendance}
+                          leftSection={<IconBolt size={14} />}
+                        >
+                          Catat Absensi
+                        </Button>
+                      </Group>
+                    </Alert>
+                  )}
+                </Stack>
+              </Card>
+
+              {/* Student List */}
+              <Card withBorder radius="md">
+                <Stack gap="md">
+                  <Group justify="space-between">
+                    <Text fw={600}>Daftar Siswa ({filteredStudents.length})</Text>
+                  </Group>
+
+                  <ScrollArea h={400}>
+                    <Stack gap="xs">
+                      {filteredStudents.map((student) => {
+                        const attendanceStatus = getAttendanceStatus(student.id);
+                        const currentStatus = attendanceStatuses[student.id] || '';
+                        const currentNote = attendanceNotes[student.id] || '';
+                        
+                        return (
+                          <Paper 
+                            key={student.id} 
+                            p="md" 
+                            withBorder 
+                            radius="md"
+                          >
+                            <Group justify="space-between">
+                              <Group gap="md">
+                                <Avatar size="md" radius="xl" color="blue">
+                                  {student.full_name.charAt(0)}
+                                </Avatar>
+                                
+                                <div>
+                                  <Text fw={500}>{student.full_name}</Text>
+                                  <Text size="sm" c="dimmed">{student.email}</Text>
+                                </div>
+                              </Group>
+
+                              <Group gap="md">
+                                <Radio.Group
+                                  value={currentStatus}
+                                  onChange={(value) => handleStatusChange(student.id, value as any)}
+                                >
+                                  <Group gap="md">
+                                    <Radio
+                                      value="present"
+                                      label="Hadir"
+                                      color="green"
+                                      size="sm"
+                                    />
+                                    <Radio
+                                      value="absent"
+                                      label="Tidak Hadir"
+                                      color="red"
+                                      size="sm"
+                                    />
+                                    <Radio
+                                      value="sick"
+                                      label="Sakit"
+                                      color="yellow"
+                                      size="sm"
+                                    />
+                                    <Radio
+                                      value="permission"
+                                      label="Izin"
+                                      color="blue"
+                                      size="sm"
+                                    />
+                                  </Group>
+                                </Radio.Group>
+
+                                {attendanceStatus && (
+                                  <Badge 
+                                    color={getStatusColor(attendanceStatus)}
+                                    variant="light" 
+                                    size="lg"
+                                    leftSection={getStatusIcon(attendanceStatus)}
+                                  >
+                                    {getStatusLabel(attendanceStatus)}
+                                  </Badge>
+                                )}
+                              </Group>
+                            </Group>
+
+                            <Divider my="sm" />
+                            <TextInput
+                              placeholder="Keterangan (opsional)"
+                              value={currentNote}
+                              onChange={(e) => handleNoteChange(student.id, e.target.value)}
+                              size="sm"
+                            />
+                          </Paper>
+                        );
+                      })}
+                    </Stack>
+                  </ScrollArea>
+                </Stack>
+              </Card>
             </Stack>
-          </Card>
-        )}
+          </Tabs.Panel>
+
+          <Tabs.Panel value="history" pt="md">
+            <Card withBorder radius="md">
+              <Stack gap="md">
+                <Text fw={600}>Riwayat Absensi</Text>
+                <Text size="sm" c="dimmed">
+                  Riwayat lengkap absensi kelas ini akan ditampilkan di sini
+                </Text>
+                {/* History content will be implemented here */}
+              </Stack>
+            </Card>
+          </Tabs.Panel>
+
+          <Tabs.Panel value="analytics" pt="md">
+            <Card withBorder radius="md">
+              <Stack gap="md">
+                <Text fw={600}>Analisis Absensi</Text>
+                <Text size="sm" c="dimmed">
+                  Grafik dan analisis absensi akan ditampilkan di sini
+                </Text>
+                {/* Analytics content will be implemented here */}
+              </Stack>
+            </Card>
+          </Tabs.Panel>
+        </Tabs>
       </Stack>
     </Container>
   );

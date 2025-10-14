@@ -28,22 +28,41 @@ export const classService = {
   },
 
   async getClassById(classId: string) {
-    const { data, error } = await supabase
+    // First try a simple query
+    const { data: simpleData, error: simpleError } = await supabase
       .from('classes')
-      .select(`
-        *,
-        created_by_teacher:teachers!classes_created_by_fkey(full_name),
-        class_students(
-          id,
-          enrolled_at,
-          student:students(*)
-        )
-      `)
+      .select('*')
       .eq('id', classId)
       .single();
 
-    if (error) throw error;
-    return data;
+    if (simpleError) {
+      throw simpleError;
+    }
+
+    // Now get class students separately
+    const { data: classStudents, error: studentsError } = await supabase
+      .from('class_students')
+      .select(`
+        id,
+        enrolled_at,
+        student:students(*)
+      `)
+      .eq('class_id', classId);
+
+    // Get teacher info
+    const { data: teacherData, error: teacherError } = await supabase
+      .from('teachers')
+      .select('full_name')
+      .eq('id', simpleData.created_by)
+      .single();
+
+    const result = {
+      ...simpleData,
+      created_by_teacher: teacherData,
+      class_students: classStudents || []
+    };
+
+    return result;
   },
 
   async createClass(classData: {

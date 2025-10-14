@@ -94,6 +94,7 @@ export function TeacherDashboard() {
         notificationService.getUnreadNotifications(teacher.id, 'teacher')
       ]);
 
+
       // Calculate stats
       const totalClasses = classes.length;
       const totalStudents = students.length;

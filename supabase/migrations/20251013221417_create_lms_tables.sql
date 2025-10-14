@@ -45,12 +45,13 @@ CREATE TABLE IF NOT EXISTS teachers (
 -- STUDENTS
 -- ============================================
 CREATE TABLE IF NOT EXISTS students (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   email TEXT UNIQUE NOT NULL,
   full_name TEXT NOT NULL,
   password_hash TEXT NOT NULL,
   birth_date DATE NOT NULL,
   phone TEXT,
+  address TEXT,
   avatar_url TEXT,
   is_active BOOLEAN DEFAULT true,
   created_at TIMESTAMPTZ DEFAULT NOW(),
@@ -64,10 +65,9 @@ CREATE INDEX IF NOT EXISTS idx_students_active ON students(is_active);
 -- CLASSES
 -- ============================================
 CREATE TABLE IF NOT EXISTS classes (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   name TEXT NOT NULL,
   grade TEXT NOT NULL CHECK (grade IN ('10', '11', '12')),
-  subject TEXT NOT NULL,
   description TEXT,
   class_code TEXT UNIQUE NOT NULL,
   is_active BOOLEAN DEFAULT true,
@@ -83,7 +83,7 @@ CREATE INDEX IF NOT EXISTS idx_classes_active ON classes(is_active);
 -- CLASS STUDENTS
 -- ============================================
 CREATE TABLE IF NOT EXISTS class_students (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   class_id UUID REFERENCES classes ON DELETE CASCADE NOT NULL,
   student_id UUID REFERENCES students ON DELETE CASCADE NOT NULL,
   enrolled_at TIMESTAMPTZ DEFAULT NOW(),
@@ -98,7 +98,7 @@ CREATE INDEX IF NOT EXISTS idx_class_students_student ON class_students(student_
 -- MATERIALS (Shared by all teachers)
 -- ============================================
 CREATE TABLE IF NOT EXISTS materials (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   class_id UUID REFERENCES classes ON DELETE CASCADE NOT NULL,
   title TEXT NOT NULL,
   description TEXT,
@@ -118,7 +118,7 @@ CREATE INDEX IF NOT EXISTS idx_materials_class ON materials(class_id);
 -- ASSIGNMENTS (2 Types: Wajib & Tambahan)
 -- ============================================
 CREATE TABLE IF NOT EXISTS assignments (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   
   -- Assignment Info
   title TEXT NOT NULL,
@@ -155,7 +155,7 @@ CREATE INDEX IF NOT EXISTS idx_assignments_deadline ON assignments(deadline);
 -- QUESTIONS
 -- ============================================
 CREATE TABLE IF NOT EXISTS questions (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   assignment_id UUID REFERENCES assignments ON DELETE CASCADE NOT NULL,
   question_text TEXT NOT NULL,
   question_type TEXT CHECK (question_type IN ('essay', 'file_upload')),
@@ -170,7 +170,7 @@ CREATE INDEX IF NOT EXISTS idx_questions_assignment ON questions(assignment_id);
 -- SUBMISSIONS
 -- ============================================
 CREATE TABLE IF NOT EXISTS submissions (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   assignment_id UUID REFERENCES assignments ON DELETE CASCADE NOT NULL,
   student_id UUID REFERENCES students ON DELETE CASCADE NOT NULL,
   status TEXT DEFAULT 'pending' CHECK (status IN ('pending', 'submitted', 'graded')),
@@ -191,7 +191,7 @@ CREATE INDEX IF NOT EXISTS idx_submissions_status ON submissions(status);
 -- ANSWERS
 -- ============================================
 CREATE TABLE IF NOT EXISTS answers (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   submission_id UUID REFERENCES submissions ON DELETE CASCADE NOT NULL,
   question_id UUID REFERENCES questions ON DELETE CASCADE NOT NULL,
   answer_text TEXT,
@@ -209,7 +209,7 @@ CREATE INDEX IF NOT EXISTS idx_answers_question ON answers(question_id);
 -- ATTENDANCE
 -- ============================================
 CREATE TABLE IF NOT EXISTS attendances (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   class_id UUID REFERENCES classes ON DELETE CASCADE NOT NULL,
   student_id UUID REFERENCES students ON DELETE CASCADE NOT NULL,
   date DATE NOT NULL,
@@ -228,7 +228,7 @@ CREATE INDEX IF NOT EXISTS idx_attendances_student ON attendances(student_id);
 -- NOTIFICATIONS
 -- ============================================
 CREATE TABLE IF NOT EXISTS notifications (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   user_id UUID NOT NULL,
   user_type TEXT CHECK (user_type IN ('teacher', 'student')),
   title TEXT NOT NULL,
@@ -246,7 +246,7 @@ CREATE INDEX IF NOT EXISTS idx_notifications_created ON notifications(created_at
 -- ACTIVITY LOG (Track all teacher actions)
 -- ============================================
 CREATE TABLE IF NOT EXISTS activity_logs (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   teacher_id UUID REFERENCES teachers(id),
   action TEXT NOT NULL,
   entity_type TEXT NOT NULL,

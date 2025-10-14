@@ -332,4 +332,37 @@ export const attendanceService = {
 
     return data;
   },
+
+  async getClassAttendanceStats(classId: string) {
+    // Get unique dates for this class
+    const { data: uniqueDates, error: datesError } = await supabase
+      .from('attendances')
+      .select('date')
+      .eq('class_id', classId)
+      .order('date', { ascending: false });
+
+    if (datesError) throw datesError;
+
+    // Get total attendance records
+    const { data: attendanceRecords, error: recordsError } = await supabase
+      .from('attendances')
+      .select('*')
+      .eq('class_id', classId);
+
+    if (recordsError) throw recordsError;
+
+    const uniqueDatesSet = new Set(uniqueDates?.map(d => d.date) || []);
+    const totalSessions = uniqueDatesSet.size;
+    const totalRecords = attendanceRecords?.length || 0;
+    const presentRecords = attendanceRecords?.filter(r => r.status === 'present').length || 0;
+    const absentRecords = attendanceRecords?.filter(r => r.status === 'absent').length || 0;
+
+    return {
+      totalSessions,
+      totalRecords,
+      presentRecords,
+      absentRecords,
+      attendanceRate: totalRecords > 0 ? Math.round((presentRecords / totalRecords) * 100) : 0
+    };
+  },
 };

@@ -4,6 +4,17 @@ import { studentAuthService } from './studentAuthService';
 
 export const studentService = {
   async getAllStudents(isActive: boolean = true) {
+    // First try a simple query without joins
+    const { data: simpleData, error: simpleError } = await supabase
+      .from('students')
+      .select('*')
+      .order('created_at', { ascending: false });
+
+    if (simpleError) {
+      throw simpleError;
+    }
+
+    // If simple query works, try the complex one
     const query = supabase
       .from('students')
       .select(`
@@ -19,7 +30,11 @@ export const studentService = {
 
     const { data, error } = await query;
 
-    if (error) throw error;
+    if (error) {
+      // If complex query fails, fall back to simple data
+      return simpleData || [];
+    }
+    
     return data;
   },
 
@@ -240,5 +255,35 @@ export const studentService = {
     }, [] as Student[]);
 
     return uniqueStudents;
+  },
+
+  async deleteStudent(studentId: string, deletedBy: string) {
+    // First, get student info for logging
+    const { data: student, error: fetchError } = await supabase
+      .from('students')
+      .select('full_name')
+      .eq('id', studentId)
+      .single();
+
+    if (fetchError) throw fetchError;
+
+    // Delete the student (this will cascade delete related records due to foreign key constraints)
+    const { error } = await supabase
+      .from('students')
+      .delete()
+      .eq('id', studentId);
+
+    if (error) throw error;
+
+    // Log the deletion
+    await supabase.from('activity_logs').insert({
+      teacher_id: deletedBy,
+      action: 'delete',
+      entity_type: 'student',
+      entity_id: studentId,
+      description: `Deleted student ${student.full_name}`,
+    });
+
+    return { success: true };
   },
 };

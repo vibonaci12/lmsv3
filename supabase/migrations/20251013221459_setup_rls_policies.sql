@@ -39,9 +39,7 @@ ALTER TABLE activity_logs ENABLE ROW LEVEL SECURITY;
 CREATE POLICY "Teachers can view all teachers" ON teachers
   FOR SELECT
   TO authenticated
-  USING (
-    EXISTS (SELECT 1 FROM teachers WHERE id = auth.uid())
-  );
+  USING (auth.uid() IS NOT NULL);
 
 CREATE POLICY "Teachers can insert their profile" ON teachers
   FOR INSERT
@@ -51,9 +49,7 @@ CREATE POLICY "Teachers can insert their profile" ON teachers
 CREATE POLICY "Teachers can update all teacher profiles" ON teachers
   FOR UPDATE
   TO authenticated
-  USING (
-    EXISTS (SELECT 1 FROM teachers WHERE id = auth.uid())
-  );
+  USING (auth.uid() IS NOT NULL);
 
 -- ============================================
 -- STUDENTS TABLE - Teachers have full access
@@ -61,30 +57,22 @@ CREATE POLICY "Teachers can update all teacher profiles" ON teachers
 CREATE POLICY "Teachers can view all students" ON students
   FOR SELECT
   TO authenticated
-  USING (
-    EXISTS (SELECT 1 FROM teachers WHERE id = auth.uid())
-  );
+  USING (auth.uid() IS NOT NULL);
 
 CREATE POLICY "Teachers can create students" ON students
   FOR INSERT
   TO authenticated
-  WITH CHECK (
-    EXISTS (SELECT 1 FROM teachers WHERE id = auth.uid())
-  );
+  WITH CHECK (auth.uid() IS NOT NULL);
 
 CREATE POLICY "Teachers can update all students" ON students
   FOR UPDATE
   TO authenticated
-  USING (
-    EXISTS (SELECT 1 FROM teachers WHERE id = auth.uid())
-  );
+  USING (auth.uid() IS NOT NULL);
 
 CREATE POLICY "Teachers can delete students" ON students
   FOR DELETE
   TO authenticated
-  USING (
-    EXISTS (SELECT 1 FROM teachers WHERE id = auth.uid())
-  );
+  USING (auth.uid() IS NOT NULL);
 
 -- Students can view their own profile
 CREATE POLICY "Students can view own profile" ON students
@@ -98,30 +86,22 @@ CREATE POLICY "Students can view own profile" ON students
 CREATE POLICY "Teachers can view all classes" ON classes
   FOR SELECT
   TO authenticated
-  USING (
-    EXISTS (SELECT 1 FROM teachers WHERE id = auth.uid())
-  );
+  USING (auth.uid() IS NOT NULL);
 
 CREATE POLICY "Teachers can create classes" ON classes
   FOR INSERT
   TO authenticated
-  WITH CHECK (
-    EXISTS (SELECT 1 FROM teachers WHERE id = auth.uid())
-  );
+  WITH CHECK (auth.uid() IS NOT NULL);
 
 CREATE POLICY "Teachers can update all classes" ON classes
   FOR UPDATE
   TO authenticated
-  USING (
-    EXISTS (SELECT 1 FROM teachers WHERE id = auth.uid())
-  );
+  USING (auth.uid() IS NOT NULL);
 
 CREATE POLICY "Teachers can delete classes" ON classes
   FOR DELETE
   TO authenticated
-  USING (
-    EXISTS (SELECT 1 FROM teachers WHERE id = auth.uid())
-  );
+  USING (auth.uid() IS NOT NULL);
 
 -- Students can view enrolled classes
 CREATE POLICY "Students can view enrolled classes" ON classes
@@ -141,23 +121,17 @@ CREATE POLICY "Students can view enrolled classes" ON classes
 CREATE POLICY "Teachers can view all enrollments" ON class_students
   FOR SELECT
   TO authenticated
-  USING (
-    EXISTS (SELECT 1 FROM teachers WHERE id = auth.uid())
-  );
+  USING (auth.uid() IS NOT NULL);
 
 CREATE POLICY "Teachers can enroll students" ON class_students
   FOR INSERT
   TO authenticated
-  WITH CHECK (
-    EXISTS (SELECT 1 FROM teachers WHERE id = auth.uid())
-  );
+  WITH CHECK (auth.uid() IS NOT NULL);
 
 CREATE POLICY "Teachers can remove enrollments" ON class_students
   FOR DELETE
   TO authenticated
-  USING (
-    EXISTS (SELECT 1 FROM teachers WHERE id = auth.uid())
-  );
+  USING (auth.uid() IS NOT NULL);
 
 -- Students can view their enrollments
 CREATE POLICY "Students can view own enrollments" ON class_students
@@ -171,30 +145,22 @@ CREATE POLICY "Students can view own enrollments" ON class_students
 CREATE POLICY "Teachers can view all materials" ON materials
   FOR SELECT
   TO authenticated
-  USING (
-    EXISTS (SELECT 1 FROM teachers WHERE id = auth.uid())
-  );
+  USING (auth.uid() IS NOT NULL);
 
 CREATE POLICY "Teachers can upload materials" ON materials
   FOR INSERT
   TO authenticated
-  WITH CHECK (
-    EXISTS (SELECT 1 FROM teachers WHERE id = auth.uid())
-  );
+  WITH CHECK (auth.uid() IS NOT NULL);
 
 CREATE POLICY "Teachers can update all materials" ON materials
   FOR UPDATE
   TO authenticated
-  USING (
-    EXISTS (SELECT 1 FROM teachers WHERE id = auth.uid())
-  );
+  USING (auth.uid() IS NOT NULL);
 
 CREATE POLICY "Teachers can delete materials" ON materials
   FOR DELETE
   TO authenticated
-  USING (
-    EXISTS (SELECT 1 FROM teachers WHERE id = auth.uid())
-  );
+  USING (auth.uid() IS NOT NULL);
 
 -- Students can view materials for enrolled classes
 CREATE POLICY "Students can view enrolled class materials" ON materials
@@ -214,30 +180,22 @@ CREATE POLICY "Students can view enrolled class materials" ON materials
 CREATE POLICY "Teachers can view all assignments" ON assignments
   FOR SELECT
   TO authenticated
-  USING (
-    EXISTS (SELECT 1 FROM teachers WHERE id = auth.uid())
-  );
+  USING (auth.uid() IS NOT NULL);
 
 CREATE POLICY "Teachers can create assignments" ON assignments
   FOR INSERT
   TO authenticated
-  WITH CHECK (
-    EXISTS (SELECT 1 FROM teachers WHERE id = auth.uid())
-  );
+  WITH CHECK (auth.uid() IS NOT NULL);
 
 CREATE POLICY "Teachers can update all assignments" ON assignments
   FOR UPDATE
   TO authenticated
-  USING (
-    EXISTS (SELECT 1 FROM teachers WHERE id = auth.uid())
-  );
+  USING (auth.uid() IS NOT NULL);
 
 CREATE POLICY "Teachers can delete assignments" ON assignments
   FOR DELETE
   TO authenticated
-  USING (
-    EXISTS (SELECT 1 FROM teachers WHERE id = auth.uid())
-  );
+  USING (auth.uid() IS NOT NULL);
 
 -- Students can view relevant assignments
 CREATE POLICY "Students can view relevant assignments" ON assignments
@@ -251,9 +209,7 @@ CREATE POLICY "Students can view relevant assignments" ON assignments
 CREATE POLICY "Teachers can manage all questions" ON questions
   FOR ALL
   TO authenticated
-  USING (
-    EXISTS (SELECT 1 FROM teachers WHERE id = auth.uid())
-  );
+  USING (auth.uid() IS NOT NULL);
 
 CREATE POLICY "Students can view questions" ON questions
   FOR SELECT
@@ -266,23 +222,17 @@ CREATE POLICY "Students can view questions" ON questions
 CREATE POLICY "Teachers can view all submissions" ON submissions
   FOR SELECT
   TO authenticated
-  USING (
-    EXISTS (SELECT 1 FROM teachers WHERE id = auth.uid())
-  );
+  USING (auth.uid() IS NOT NULL);
 
 CREATE POLICY "Teachers can update all submissions" ON submissions
   FOR UPDATE
   TO authenticated
-  USING (
-    EXISTS (SELECT 1 FROM teachers WHERE id = auth.uid())
-  );
+  USING (auth.uid() IS NOT NULL);
 
 CREATE POLICY "Teachers can insert submissions" ON submissions
   FOR INSERT
   TO authenticated
-  WITH CHECK (
-    EXISTS (SELECT 1 FROM teachers WHERE id = auth.uid())
-  );
+  WITH CHECK (auth.uid() IS NOT NULL);
 
 -- Students policies for submissions
 CREATE POLICY "Students can view own submissions" ON submissions
@@ -306,9 +256,7 @@ CREATE POLICY "Students can update own submissions" ON submissions
 CREATE POLICY "Teachers can manage all answers" ON answers
   FOR ALL
   TO authenticated
-  USING (
-    EXISTS (SELECT 1 FROM teachers WHERE id = auth.uid())
-  );
+  USING (auth.uid() IS NOT NULL);
 
 CREATE POLICY "Students can manage own answers" ON answers
   FOR ALL
@@ -321,9 +269,7 @@ CREATE POLICY "Students can manage own answers" ON answers
 CREATE POLICY "Teachers can manage all attendances" ON attendances
   FOR ALL
   TO authenticated
-  USING (
-    EXISTS (SELECT 1 FROM teachers WHERE id = auth.uid())
-  );
+  USING (auth.uid() IS NOT NULL);
 
 CREATE POLICY "Students can view own attendance" ON attendances
   FOR SELECT
@@ -357,9 +303,7 @@ CREATE POLICY "System can insert notifications" ON notifications
 CREATE POLICY "Teachers can view all activity logs" ON activity_logs
   FOR SELECT
   TO authenticated
-  USING (
-    EXISTS (SELECT 1 FROM teachers WHERE id = auth.uid())
-  );
+  USING (auth.uid() IS NOT NULL);
 
 CREATE POLICY "System can insert activity logs" ON activity_logs
   FOR INSERT

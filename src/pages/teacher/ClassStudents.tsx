@@ -84,8 +84,10 @@ export function ClassStudents() {
       setLoading(true);
       const classInfo = await classService.getClassById(id);
       
-      // Get enrolled students
-      const enrolledStudents = classInfo.class_students?.map((cs: any) => cs.student) || [];
+      // Get enrolled students (show all, including inactive for management)
+      const enrolledStudents = classInfo.class_students
+        ?.map((cs: any) => cs.student)
+        .filter((student: any) => student) || [];
       
       setClassData(classInfo);
       setStudents(enrolledStudents);
@@ -205,8 +207,8 @@ export function ClassStudents() {
       // Remove from class first
       await classService.unenrollStudent(id!, selectedStudent.id);
       
-      // Then delete the student
-      await studentService.deleteStudent(selectedStudent.id);
+      // Then delete the student (this will cascade delete all related data)
+      await studentService.deleteStudent(selectedStudent.id, teacher.id);
       
       notifications.show({
         title: 'Berhasil',
