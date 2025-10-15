@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { motion, AnimatePresence, useMotionValue, useSpring } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import { 
   IconHome,
   IconBook,
@@ -37,8 +37,21 @@ export function BottomNavigation({ role }: BottomNavigationProps) {
   const location = useLocation();
   const navigate = useNavigate();
   const [activeIndex, setActiveIndex] = useState(0);
+  const [isMobile, setIsMobile] = useState(false);
 
   const navItems = role === 'student' ? studentNavItems : teacherNavItems;
+
+  // Check if mobile on mount and resize
+  useEffect(() => {
+    const checkIsMobile = () => {
+      setIsMobile(window.innerWidth < 768);
+    };
+    
+    checkIsMobile();
+    window.addEventListener('resize', checkIsMobile);
+    
+    return () => window.removeEventListener('resize', checkIsMobile);
+  }, []);
 
   // Find active index based on current path
   useEffect(() => {
@@ -53,6 +66,11 @@ export function BottomNavigation({ role }: BottomNavigationProps) {
     navigate(path);
   };
 
+  // Don't render on desktop
+  if (!isMobile) {
+    return null;
+  }
+
   return (
     <div style={{
       position: 'fixed',
@@ -60,7 +78,7 @@ export function BottomNavigation({ role }: BottomNavigationProps) {
       left: 0,
       right: 0,
       zIndex: 50,
-      display: window.innerWidth >= 768 ? 'none' : 'block'
+      display: 'block'
     }}>
       {/* Background with glassmorphism effect */}
       <motion.div 

@@ -77,8 +77,8 @@ export function StudentDashboard() {
       
       // Load student submissions and grades
       const [submissions, notifications] = await Promise.all([
-        submissionService.getStudentSubmissions(student.id),
-        notificationService.getUnreadNotifications(student.id, 'student')
+        submissionService.getStudentSubmissions(student.id).catch(() => []),
+        notificationService.getUnreadNotifications(student.id, 'student').catch(() => [])
       ]);
 
       console.log('Dashboard - Submissions:', submissions);

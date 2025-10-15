@@ -131,8 +131,13 @@ interface Assignment {
 }
 
 export function StudentClassroom() {
-  const { user } = useAuth();
-  const student = user!;
+  const { user, loading: authLoading } = useAuth();
+  
+  if (authLoading || !user) {
+    return <LoadingSpinner message="Memuat data kelas..." />;
+  }
+  
+  const student = user;
   
   const [loading, setLoading] = useState(true);
   const [classes, setClasses] = useState<ClassInfo[]>([]);

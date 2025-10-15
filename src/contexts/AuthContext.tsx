@@ -23,6 +23,32 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     checkUser();
 
+    // Listen for storage changes (when student session is updated in another tab)
+    const handleStorageChange = (e: StorageEvent) => {
+      if (e.key === 'student_session') {
+        if (e.newValue) {
+          // Session was added, recheck user
+          checkUser();
+        } else {
+          // Session was removed, clear user if it's a student
+          setUser(prevUser => {
+            if (prevUser && 'password_hash' in prevUser) { // Check if it's a student
+              return null;
+            }
+            return prevUser;
+          });
+          setRole(prevRole => {
+            if (prevRole === 'student') {
+              return null;
+            }
+            return prevRole;
+          });
+        }
+      }
+    };
+
+    window.addEventListener('storage', handleStorageChange);
+
     const { data: { subscription } } = authService.onAuthStateChange(async (authUser) => {
       if (authUser) {
         const teacher = await authService.getCurrentTeacher();
@@ -31,16 +57,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           setRole('teacher');
         }
       } else {
-        setUser(null);
-        setRole(null);
+        // Only clear user if no student session exists
+        const studentSession = localStorage.getItem('student_session');
+        if (!studentSession) {
+          setUser(null);
+          setRole(null);
+        }
       }
       setLoading(false);
     });
 
     return () => {
       subscription.unsubscribe();
+      window.removeEventListener('storage', handleStorageChange);
     };
-  }, []);
+  }, []); // Remove role dependency to prevent infinite loop
 
   async function checkUser() {
     try {
@@ -78,6 +109,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
               .from('students')
               .select('*')
               .eq('id', sessionData.id)
+              .eq('is_active', true)
               .single();
 
             console.log('Student data from DB:', studentData);
@@ -87,6 +119,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
               console.log('Setting student user:', studentData);
               setUser(studentData);
               setRole('student');
+              
+              // Refresh session timestamp to keep it alive
+              localStorage.setItem('student_session', JSON.stringify({
+                id: studentData.id,
+                email: studentData.email,
+                timestamp: Date.now()
+              }));
+              
               setLoading(false);
               return;
             } else {
@@ -105,9 +145,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       } else {
         console.log('No student session found');
       }
+      
+      // If we reach here, no valid session was found
+      setUser(null);
+      setRole(null);
+      setLoading(false);
     } catch (error) {
       console.error('Error checking user:', error);
-    } finally {
+      setUser(null);
+      setRole(null);
       setLoading(false);
     }
   }

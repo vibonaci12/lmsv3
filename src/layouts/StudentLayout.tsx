@@ -1,14 +1,13 @@
-import { AppShell, Burger, Group, Text, NavLink, Avatar, Menu, Button } from '@mantine/core';
+import { AppShell, Group, Text, Avatar, Menu, Button, NavLink, Burger } from '@mantine/core';
 import { useDisclosure } from '@mantine/hooks';
 import { Outlet, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { Student } from '../types';
 import { BottomNavigation } from '../components';
+import { useResponsive } from '../hooks/useResponsive';
 import {
   LayoutDashboard,
   BookOpen,
-  ClipboardList,
-  BarChart3,
   Trophy,
   LogOut,
   User,
@@ -19,6 +18,7 @@ export function StudentLayout() {
   const navigate = useNavigate();
   const location = useLocation();
   const { user, logout } = useAuth();
+  const { isMobile } = useResponsive();
   const student = user as Student;
 
   const handleLogout = async () => {
@@ -37,7 +37,7 @@ export function StudentLayout() {
       header={{ height: 60 }}
       navbar={{
         width: 250,
-        breakpoint: 'sm',
+        breakpoint: 'md',
         collapsed: { mobile: !opened },
       }}
       padding="md"
@@ -45,7 +45,7 @@ export function StudentLayout() {
       <AppShell.Header>
         <Group h="100%" px="md" justify="space-between">
           <Group>
-            <Burger opened={opened} onClick={toggle} hiddenFrom="sm" size="sm" />
+            <Burger opened={opened} onClick={toggle} hiddenFrom="md" size="sm" />
             <Text size="lg" fw={700}>LMS - Siswa</Text>
           </Group>
 
@@ -82,7 +82,7 @@ export function StudentLayout() {
         </Group>
       </AppShell.Header>
 
-      <AppShell.Navbar p="md">
+      <AppShell.Navbar p="md" visibleFrom="md">
         {navItems.map((item) => (
           <NavLink
             key={item.path}
@@ -95,11 +95,11 @@ export function StudentLayout() {
         ))}
       </AppShell.Navbar>
 
-      <AppShell.Main style={{ paddingBottom: '80px' }}>
+      <AppShell.Main style={{ paddingBottom: isMobile ? '80px' : '0' }}>
         <Outlet />
       </AppShell.Main>
       
-      {/* Bottom Navigation for Mobile */}
+      {/* Bottom Navigation - Only visible on mobile */}
       <BottomNavigation role="student" />
     </AppShell>
   );

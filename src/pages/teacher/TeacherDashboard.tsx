@@ -87,11 +87,11 @@ export function TeacherDashboard() {
       
       // Load basic stats
       const [classes, students, assignments, activities, notifications] = await Promise.all([
-        classService.getAllClasses(),
-        studentService.getAllStudents(),
-        assignmentService.getAllAssignments(),
-        activityLogService.getRecentActivities(10),
-        notificationService.getUnreadNotifications(teacher.id, 'teacher')
+        classService.getAllClasses().catch(() => []),
+        studentService.getAllStudents().catch(() => []),
+        assignmentService.getAllAssignments().catch(() => []),
+        activityLogService.getRecentActivities(10).catch(() => []),
+        notificationService.getUnreadNotifications(teacher.id, 'teacher').catch(() => [])
       ]);
 
 
@@ -113,7 +113,7 @@ export function TeacherDashboard() {
       ).length;
 
       // Load grade analytics
-      const analytics = await gradeService.getGradeAnalytics();
+      const analytics = await gradeService.getGradeAnalytics().catch(() => ({ byGrade: [] }));
       
       // Load submission trends (mock data for now)
       const trends = [
