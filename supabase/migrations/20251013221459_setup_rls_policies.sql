@@ -110,7 +110,9 @@ CREATE POLICY "Students can view enrolled classes" ON classes
   USING (
     id IN (
       SELECT class_id FROM class_students WHERE student_id IN (
-        SELECT id FROM students
+        SELECT id FROM students WHERE id IN (
+          SELECT id FROM students
+        )
       )
     )
   );
@@ -169,7 +171,9 @@ CREATE POLICY "Students can view enrolled class materials" ON materials
   USING (
     class_id IN (
       SELECT class_id FROM class_students WHERE student_id IN (
-        SELECT id FROM students
+        SELECT id FROM students WHERE id IN (
+          SELECT id FROM students
+        )
       )
     )
   );

@@ -28,7 +28,7 @@ export function UnifiedLogin() {
   
   // Student login state
   const [studentEmail, setStudentEmail] = useState('');
-  const [studentBirthDate, setStudentBirthDate] = useState('');
+  const [studentPassword, setStudentPassword] = useState('');
   const [studentLoading, setStudentLoading] = useState(false);
   const [studentError, setStudentError] = useState('');
 
@@ -53,9 +53,7 @@ export function UnifiedLogin() {
     setStudentLoading(true);
 
     try {
-      // Convert DD/MM/YYYY to DDMMYYYY for password
-      const password = studentBirthDate.replace(/\//g, '');
-      await loginStudent(studentEmail, password);
+      await loginStudent(studentEmail, studentPassword);
       navigate('/student/dashboard');
     } catch (err: any) {
       setStudentError(err.message || 'Gagal login sebagai siswa');
@@ -64,24 +62,6 @@ export function UnifiedLogin() {
     }
   }
 
-  function formatBirthDate(value: string) {
-    // Remove all non-numeric characters
-    const numbers = value.replace(/\D/g, '');
-    
-    // Format as DDMMYYYY
-    if (numbers.length <= 2) {
-      return numbers;
-    } else if (numbers.length <= 4) {
-      return `${numbers.slice(0, 2)}/${numbers.slice(2)}`;
-    } else {
-      return `${numbers.slice(0, 2)}/${numbers.slice(2, 4)}/${numbers.slice(4, 8)}`;
-    }
-  }
-
-  function handleBirthDateChange(e: React.ChangeEvent<HTMLInputElement>) {
-    const formatted = formatBirthDate(e.target.value);
-    setStudentBirthDate(formatted);
-  }
 
   return (
     <Container size={500} my={80}>
@@ -157,14 +137,12 @@ export function UnifiedLogin() {
                     onChange={(e) => setStudentEmail(e.target.value)}
                   />
 
-                  <TextInput
-                    label="Tanggal Lahir"
-                    placeholder="DD/MM/YYYY"
+                  <PasswordInput
+                    label="Password"
+                    placeholder="Password Anda"
                     required
-                    value={studentBirthDate}
-                    onChange={handleBirthDateChange}
-                    maxLength={10}
-                    description="Format: DD/MM/YYYY (contoh: 15/03/2005)"
+                    value={studentPassword}
+                    onChange={(e) => setStudentPassword(e.target.value)}
                   />
 
                   <Button type="submit" fullWidth loading={studentLoading}>

@@ -14,19 +14,16 @@ import {
   Badge,
   Modal,
   Textarea,
-  DateInput,
   NumberInput,
   Tabs,
   Card,
   ActionIcon,
   Menu,
-  Alert
 } from '@mantine/core';
-import { DateInput as MantineDateInput } from '@mantine/dates';
+import { DateInput } from '@mantine/dates';
 import { 
   IconPlus, 
   IconSearch, 
-  IconFilter,
   IconClipboardList,
   IconCalendar,
   IconUsers,
@@ -78,6 +75,7 @@ export function AssignmentList() {
       target_grade: '10' as '10' | '11' | '12',
       deadline: new Date(),
       total_points: 100,
+      drive_link: '',
     },
     validate: {
       title: (value) => (!value ? 'Judul tugas harus diisi' : null),
@@ -128,7 +126,7 @@ export function AssignmentList() {
     }
 
     if (typeFilter) {
-      filtered = filtered.filter(assignment => assignment.type === typeFilter);
+      filtered = filtered.filter(assignment => assignment.assignment_type === typeFilter);
     }
 
     if (statusFilter) {
@@ -141,7 +139,7 @@ export function AssignmentList() {
           case 'expired':
             return deadline <= now;
           case 'draft':
-            return !assignment.is_published;
+            return assignment.assignment_type === 'tambahan';
           default:
             return true;
         }
@@ -165,10 +163,11 @@ export function AssignmentList() {
         ...values,
         deadline: dayjs(values.deadline).format('YYYY-MM-DD HH:mm:ss'),
         created_by: teacher.id,
-        is_published: true,
+        assignment_type: values.type,
+        drive_link: values.drive_link || null,
       };
 
-      await assignmentService.createAssignment(assignmentData);
+      await assignmentService.createSimpleAssignment(assignmentData);
 
       notifications.show({
         title: 'Berhasil',
@@ -194,7 +193,7 @@ export function AssignmentList() {
     if (!selectedAssignment) return;
 
     try {
-      await assignmentService.deleteAssignment(selectedAssignment.id);
+      await assignmentService.deleteAssignment(selectedAssignment.id, teacher.id);
       notifications.show({
         title: 'Berhasil',
         message: 'Tugas berhasil dihapus',
@@ -216,7 +215,7 @@ export function AssignmentList() {
     const now = new Date();
     const deadline = new Date(assignment.deadline);
     
-    if (!assignment.is_published) return { label: 'Draft', color: 'gray' };
+    if (assignment.assignment_type === 'tambahan') return { label: 'Tambahan', color: 'orange' };
     if (deadline <= now) return { label: 'Expired', color: 'red' };
     return { label: 'Active', color: 'green' };
   };
@@ -311,7 +310,7 @@ export function AssignmentList() {
                 { value: 'tambahan', label: 'Tugas Tambahan' },
               ]}
               value={typeFilter}
-              onChange={setTypeFilter}
+              onChange={(value) => setTypeFilter(value || '')}
               clearable
             />
             <Select
@@ -322,7 +321,7 @@ export function AssignmentList() {
                 { value: 'draft', label: 'Draft' },
               ]}
               value={statusFilter}
-              onChange={setStatusFilter}
+              onChange={(value) => setStatusFilter(value || '')}
               clearable
             />
             <Select
@@ -332,7 +331,7 @@ export function AssignmentList() {
                 label: `${cls.name} - ${formatGrade(cls.grade)}`
               }))}
               value={classFilter}
-              onChange={setClassFilter}
+              onChange={(value) => setClassFilter(value || '')}
               clearable
             />
           </Group>
@@ -348,8 +347,8 @@ export function AssignmentList() {
                   <Card.Section withBorder inheritPadding py="xs">
                     <Group justify="space-between">
                       <Group gap="xs">
-                        <Badge color={getAssignmentTypeColor(assignment.type)} size="sm">
-                          {getAssignmentTypeLabel(assignment.type)}
+                        <Badge color={getAssignmentTypeColor(assignment.assignment_type)} size="sm">
+                          {getAssignmentTypeLabel(assignment.assignment_type)}
                         </Badge>
                         <Badge color={status.color} variant="light" size="sm">
                           {status.label}
@@ -430,11 +429,11 @@ export function AssignmentList() {
                       </Group>
                     </Group>
 
-                    {assignment.class && (
+                    {assignment.class_id && (
                       <Group gap="xs">
                         <Text size="sm" c="dimmed">Kelas:</Text>
                         <Badge variant="outline" size="sm">
-                          {assignment.class.name} - {formatGrade(assignment.class.grade)}
+                          Kelas {assignment.target_grade}
                         </Badge>
                       </Group>
                     )}
@@ -516,6 +515,12 @@ export function AssignmentList() {
                       required
                       {...form.getInputProps('total_points')}
                     />
+
+                    <TextInput
+                      label="Link Drive (Opsional)"
+                      placeholder="https://drive.google.com/..."
+                      {...form.getInputProps('drive_link')}
+                    />
                   </Stack>
                 </Tabs.Panel>
 
@@ -546,7 +551,7 @@ export function AssignmentList() {
                       />
                     )}
 
-                    <MantineDateInput
+                    <DateInput
                       label="Deadline"
                       placeholder="Pilih deadline"
                       required

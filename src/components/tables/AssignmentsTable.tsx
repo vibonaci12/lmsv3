@@ -58,20 +58,21 @@ export function AssignmentsTable({
   };
 
   return (
-    <Table striped highlightOnHover>
-      <Table.Thead>
-        <Table.Tr>
-          <Table.Th>Tugas</Table.Th>
-          <Table.Th>Tipe</Table.Th>
-          <Table.Th>Target</Table.Th>
-          <Table.Th>Deadline</Table.Th>
-          <Table.Th>Status</Table.Th>
-          <Table.Th>Pengumpulan</Table.Th>
-          <Table.Th>Poin</Table.Th>
-          {showActions && <Table.Th>Aksi</Table.Th>}
-        </Table.Tr>
-      </Table.Thead>
-      <Table.Tbody>
+    <div style={{ overflowX: 'auto' }}>
+      <Table striped highlightOnHover style={{ minWidth: 900 }}>
+        <Table.Thead>
+          <Table.Tr>
+            <Table.Th>Tugas</Table.Th>
+            <Table.Th>Tipe</Table.Th>
+            <Table.Th>Target</Table.Th>
+            <Table.Th>Deadline</Table.Th>
+            <Table.Th>Status</Table.Th>
+            <Table.Th>Pengumpulan</Table.Th>
+            <Table.Th>Poin</Table.Th>
+            {showActions && <Table.Th>Aksi</Table.Th>}
+          </Table.Tr>
+        </Table.Thead>
+        <Table.Tbody>
         {assignments.map((assignment) => {
           const deadlineStatus = getDeadlineStatus(assignment.deadline);
           
@@ -183,7 +184,8 @@ export function AssignmentsTable({
             </Table.Tr>
           );
         })}
-      </Table.Tbody>
-    </Table>
+        </Table.Tbody>
+      </Table>
+    </div>
   );
 }

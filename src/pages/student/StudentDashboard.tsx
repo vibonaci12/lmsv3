@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { 
+ import { 
   Container, 
   Title, 
   Text, 
@@ -8,7 +8,6 @@ import {
   Card, 
   Group, 
   Badge, 
-  Progress, 
   Button,
   SimpleGrid,
   Timeline,
@@ -20,7 +19,6 @@ import {
   IconTrophy,
   IconClock,
   IconBell,
-  IconAlertCircle,
   IconCheck,
   IconX
 } from '@tabler/icons-react';
@@ -83,6 +81,9 @@ export function StudentDashboard() {
         notificationService.getUnreadNotifications(student.id, 'student')
       ]);
 
+      console.log('Dashboard - Submissions:', submissions);
+      console.log('Dashboard - Notifications:', notifications);
+
       // Calculate stats
       const totalAssignments = submissions.length;
       const submittedAssignments = submissions.filter(s => s.status !== 'pending').length;
@@ -90,19 +91,19 @@ export function StudentDashboard() {
       
       const gradedSubmissions = submissions.filter(s => s.status === 'graded');
       const totalPoints = gradedSubmissions.reduce((sum, s) => sum + (s.grade || 0), 0);
-      const maxPoints = gradedSubmissions.reduce((sum, s) => sum + (s.assignment as any).total_points, 0);
+      const maxPoints = gradedSubmissions.reduce((sum, s) => sum + (s.assignment?.total_points || 0), 0);
       const averageGrade = gradedAssignments > 0 ? totalPoints / gradedAssignments : 0;
 
       // Get pending assignments (not submitted yet)
       const pending = submissions
         .filter(s => s.status === 'pending')
         .map(s => ({
-          id: s.assignment.id,
-          title: s.assignment.title,
-          deadline: s.assignment.deadline,
-          assignment_type: s.assignment.assignment_type,
-          class: s.assignment.class,
-          target_grade: s.assignment.target_grade,
+          id: s.assignment?.id || s.assignment_id,
+          title: s.assignment?.title || 'Unknown Assignment',
+          deadline: s.assignment?.deadline || '',
+          assignment_type: s.assignment?.assignment_type || 'wajib',
+          class: s.assignment?.class || null,
+          target_grade: s.assignment?.target_grade || '10',
         }));
 
       // Get recent grades
@@ -132,7 +133,7 @@ export function StudentDashboard() {
       
       setPendingAssignments(pending);
       setRecentGrades(recent);
-      setUnreadNotifications(notifications.length);
+      setUnreadNotifications(notifications?.length || 0);
       setPerformanceData(performance);
       
     } catch (error) {
@@ -229,7 +230,7 @@ export function StudentDashboard() {
         </Group>
 
         {/* Stats Cards */}
-        <SimpleGrid cols={{ base: 1, sm: 2, md: 4 }}>
+        <SimpleGrid cols={{ base: 1, sm: 2, md: 4 }} spacing="md">
           <StatCard
             title="Total Tugas"
             value={stats.totalAssignments}
@@ -270,20 +271,22 @@ export function StudentDashboard() {
               {/* Performance Chart */}
               <Card shadow="sm" padding="lg" radius="md" withBorder>
                 <Text fw={600} mb="md">Performa Nilai</Text>
-                <ResponsiveContainer width="100%" height={300}>
-                  <LineChart data={performanceData}>
-                    <CartesianGrid strokeDasharray="3 3" />
-                    <XAxis dataKey="month" />
-                    <YAxis domain={[0, 100]} />
-                    <Tooltip />
-                    <Line 
-                      type="monotone" 
-                      dataKey="grade" 
-                      stroke="#228be6" 
-                      strokeWidth={2}
-                    />
-                  </LineChart>
-                </ResponsiveContainer>
+                <div style={{ overflowX: 'auto', minWidth: '100%' }}>
+                  <ResponsiveContainer width="100%" height={300} minWidth={300}>
+                    <LineChart data={performanceData}>
+                      <CartesianGrid strokeDasharray="3 3" />
+                      <XAxis dataKey="month" />
+                      <YAxis domain={[0, 100]} />
+                      <Tooltip />
+                      <Line 
+                        type="monotone" 
+                        dataKey="grade" 
+                        stroke="#228be6" 
+                        strokeWidth={2}
+                      />
+                    </LineChart>
+                  </ResponsiveContainer>
+                </div>
               </Card>
 
               {/* Pending Assignments */}

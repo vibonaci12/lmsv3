@@ -8,6 +8,7 @@ import {
   BookOpen,
   ClipboardList,
   BarChart3,
+  Trophy,
   LogOut,
   User,
 } from 'lucide-react';
@@ -26,9 +27,8 @@ export function StudentLayout() {
 
   const navItems = [
     { icon: LayoutDashboard, label: 'Dashboard', path: '/student/dashboard' },
-    { icon: BookOpen, label: 'Kelas Saya', path: '/student/classes' },
-    { icon: ClipboardList, label: 'Tugas', path: '/student/assignments' },
-    { icon: BarChart3, label: 'Nilai', path: '/student/grades' },
+    { icon: BookOpen, label: 'Kelas & Tugas', path: '/student/classroom' },
+    { icon: Trophy, label: 'Leaderboard', path: '/student/leaderboard' },
   ];
 
   return (

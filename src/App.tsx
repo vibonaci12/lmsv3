@@ -15,8 +15,11 @@ import { ClassAssignments } from './pages/teacher/ClassAssignments';
 import { ClassAttendance } from './pages/teacher/ClassAttendance';
 import { AssignmentList } from './pages/teacher/AssignmentList';
 import { AssignmentDetail } from './pages/teacher/AssignmentDetail';
+import { Leaderboard } from './pages/teacher/Leaderboard';
 import { StudentDashboard } from './pages/student/StudentDashboard';
 import { StudentProfile } from './pages/student/StudentProfile';
+import { StudentLeaderboard } from './pages/student/StudentLeaderboard';
+import { StudentClassroom } from './pages/student/StudentClassroom';
 
 import '@mantine/core/styles.css';
 import '@mantine/notifications/styles.css';
@@ -46,10 +49,9 @@ function App() {
               <Route path="classes/:id/students" element={<ClassStudents />} />
               <Route path="classes/:id/assignments" element={<ClassAssignments />} />
               <Route path="classes/:id/attendance" element={<ClassAttendance />} />
-              <Route path="students" element={<div>Students Page</div>} />
               <Route path="assignments" element={<AssignmentList />} />
               <Route path="assignments/:id" element={<AssignmentDetail />} />
-              <Route path="grading" element={<div>Grading Page</div>} />
+              <Route path="leaderboard" element={<Leaderboard />} />
               <Route path="profile" element={<div>Profile Page</div>} />
               <Route index element={<Navigate to="/teacher/dashboard" replace />} />
             </Route>
@@ -63,9 +65,8 @@ function App() {
               }
             >
               <Route path="dashboard" element={<StudentDashboard />} />
-              <Route path="classes" element={<div>Classes Page</div>} />
-              <Route path="assignments" element={<div>Assignments Page</div>} />
-              <Route path="grades" element={<div>Grades Page</div>} />
+              <Route path="classroom" element={<StudentClassroom />} />
+              <Route path="leaderboard" element={<StudentLeaderboard />} />
               <Route path="profile" element={<StudentProfile />} />
               <Route index element={<Navigate to="/student/dashboard" replace />} />
             </Route>

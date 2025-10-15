@@ -29,7 +29,7 @@ export const gradeService = {
 
     // Get all submissions for these assignments
     const assignmentIds = assignments.map(a => a.id);
-    const studentIds = classStudents.map(cs => cs.student.id);
+    const studentIds = classStudents.map(cs => cs.student[0]?.id || cs.student.id);
 
     const { data: submissions, error: submissionsError } = await supabase
       .from('submissions')
@@ -56,9 +56,10 @@ export const gradeService = {
 
     // Initialize grades matrix
     classStudents.forEach(cs => {
-      gradebook.grades[cs.student.id] = {};
+      const studentId = cs.student[0]?.id || cs.student.id;
+      gradebook.grades[studentId] = {};
       assignments.forEach(assignment => {
-        gradebook.grades[cs.student.id][assignment.id] = {
+        gradebook.grades[studentId][assignment.id] = {
           submission: null,
           grade: null,
           status: 'not_submitted',
@@ -120,7 +121,7 @@ export const gradeService = {
 
     // Get all submissions
     const assignmentIds = assignments.map(a => a.id);
-    const studentIds = [...new Set(classStudents.map(cs => cs.student.id))];
+    const studentIds = [...new Set(classStudents.map(cs => cs.student[0]?.id || cs.student.id))];
 
     const { data: submissions, error: submissionsError } = await supabase
       .from('submissions')
@@ -248,9 +249,10 @@ export const gradeService = {
     return {
       headers: ['Student Name', 'Email', ...gradebook.assignments.map(a => a.title)],
       rows: gradebook.students.map(student => {
-        const row = [student.full_name, student.email];
+        const studentData = Array.isArray(student) ? student[0] : student;
+        const row = [studentData.full_name, studentData.email];
         gradebook.assignments.forEach(assignment => {
-          const grade = gradebook.grades[student.id][assignment.id];
+          const grade = gradebook.grades[studentData.id][assignment.id];
           if (grade.status === 'graded') {
             row.push(grade.grade);
           } else if (grade.status === 'submitted') {

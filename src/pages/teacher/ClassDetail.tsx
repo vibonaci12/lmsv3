@@ -8,7 +8,6 @@ import {
   Group, 
   Button, 
   Card,
-  Badge,
   ActionIcon,
   SimpleGrid,
   Paper
@@ -19,8 +18,6 @@ import {
   IconCalendar,
   IconUsers,
   IconClipboardList,
-  IconCheck,
-  IconClock
 } from '@tabler/icons-react';
 import { useAuth } from '../../contexts/AuthContext';
 import { classService } from '../../services/classService';
@@ -34,7 +31,7 @@ export function ClassDetail() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { user } = useAuth();
-  const teacher = user!;
+  // const teacher = user!;
   
   const [loading, setLoading] = useState(true);
   const [classData, setClassData] = useState<any>(null);

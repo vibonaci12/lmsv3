@@ -67,16 +67,14 @@ export const studentService = {
       email: string;
       full_name: string;
       birth_date: string;
-      phone?: string;
+      address?: string;
     },
+    password: string,
     createdBy: string
   ) {
     const student = await studentAuthService.createStudent(
-      studentData.email,
-      studentData.full_name,
-      studentData.birth_date,
-      studentData.phone || null,
-      createdBy
+      studentData,
+      password
     );
 
     await supabase.from('activity_logs').insert({

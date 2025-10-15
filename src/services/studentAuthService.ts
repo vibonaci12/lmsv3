@@ -3,7 +3,7 @@ import { Student } from '../types';
 import bcrypt from 'bcryptjs';
 
 export const studentAuthService = {
-  async loginStudent(email: string, birthDate: string): Promise<Student> {
+  async loginStudent(email: string, password: string): Promise<Student> {
     const { data: student, error } = await supabase
       .from('students')
       .select('*')
@@ -14,7 +14,7 @@ export const studentAuthService = {
     if (error) throw error;
     if (!student) throw new Error('Student not found or inactive');
 
-    const passwordMatch = await bcrypt.compare(birthDate, student.password_hash);
+    const passwordMatch = await bcrypt.compare(password, student.password_hash);
 
     if (!passwordMatch) {
       throw new Error('Invalid credentials');

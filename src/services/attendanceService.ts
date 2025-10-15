@@ -7,8 +7,7 @@ export const attendanceService = {
       .from('attendances')
       .select(`
         *,
-        student:students(full_name, email),
-        marked_by_teacher:teachers!attendances_marked_by_fkey(full_name)
+        student:students(full_name, email)
       `)
       .eq('class_id', classId);
 
@@ -27,17 +26,26 @@ export const attendanceService = {
   },
 
   async getAttendanceByClassAndDate(classId: string, date: string) {
-    const { data, error } = await supabase
-      .from('attendances')
-      .select(`
-        *,
-        student:students(full_name, email)
-      `)
-      .eq('class_id', classId)
-      .eq('date', date);
+    try {
+      const { data, error } = await supabase
+        .from('attendances')
+        .select(`
+          *,
+          student:students(full_name, email)
+        `)
+        .eq('class_id', classId)
+        .eq('date', date);
 
-    if (error) throw error;
-    return data || [];
+      if (error) {
+        console.error('Error fetching attendance:', error);
+        return [];
+      }
+      
+      return data || [];
+    } catch (error) {
+      console.error('Error in getAttendanceByClassAndDate:', error);
+      return [];
+    }
   },
 
   async getAttendanceHistory(classId: string, startDate?: string, endDate?: string) {
@@ -70,6 +78,15 @@ export const attendanceService = {
     notes?: string;
     marked_by: string;
   }) {
+    // First, delete existing attendance for this student, class, and date
+    await supabase
+      .from('attendances')
+      .delete()
+      .eq('student_id', attendanceData.student_id)
+      .eq('class_id', attendanceData.class_id)
+      .eq('date', attendanceData.date);
+
+    // Insert new attendance record
     const { data, error } = await supabase
       .from('attendances')
       .insert(attendanceData)
@@ -334,35 +351,64 @@ export const attendanceService = {
   },
 
   async getClassAttendanceStats(classId: string) {
-    // Get unique dates for this class
-    const { data: uniqueDates, error: datesError } = await supabase
-      .from('attendances')
-      .select('date')
-      .eq('class_id', classId)
-      .order('date', { ascending: false });
+    try {
+      // Get unique dates for this class
+      const { data: uniqueDates, error: datesError } = await supabase
+        .from('attendances')
+        .select('date')
+        .eq('class_id', classId)
+        .order('date', { ascending: false });
 
-    if (datesError) throw datesError;
+      if (datesError) {
+        console.error('Error fetching unique dates:', datesError);
+        return {
+          totalSessions: 0,
+          totalRecords: 0,
+          presentRecords: 0,
+          absentRecords: 0,
+          attendanceRate: 0
+        };
+      }
 
-    // Get total attendance records
-    const { data: attendanceRecords, error: recordsError } = await supabase
-      .from('attendances')
-      .select('*')
-      .eq('class_id', classId);
+      // Get total attendance records
+      const { data: attendanceRecords, error: recordsError } = await supabase
+        .from('attendances')
+        .select('*')
+        .eq('class_id', classId);
 
-    if (recordsError) throw recordsError;
+      if (recordsError) {
+        console.error('Error fetching attendance records:', recordsError);
+        return {
+          totalSessions: 0,
+          totalRecords: 0,
+          presentRecords: 0,
+          absentRecords: 0,
+          attendanceRate: 0
+        };
+      }
 
-    const uniqueDatesSet = new Set(uniqueDates?.map(d => d.date) || []);
-    const totalSessions = uniqueDatesSet.size;
-    const totalRecords = attendanceRecords?.length || 0;
-    const presentRecords = attendanceRecords?.filter(r => r.status === 'present').length || 0;
-    const absentRecords = attendanceRecords?.filter(r => r.status === 'absent').length || 0;
+      const uniqueDatesSet = new Set(uniqueDates?.map(d => d.date) || []);
+      const totalSessions = uniqueDatesSet.size;
+      const totalRecords = attendanceRecords?.length || 0;
+      const presentRecords = attendanceRecords?.filter(r => r.status === 'present').length || 0;
+      const absentRecords = attendanceRecords?.filter(r => r.status === 'absent').length || 0;
 
-    return {
-      totalSessions,
-      totalRecords,
-      presentRecords,
-      absentRecords,
-      attendanceRate: totalRecords > 0 ? Math.round((presentRecords / totalRecords) * 100) : 0
-    };
+      return {
+        totalSessions,
+        totalRecords,
+        presentRecords,
+        absentRecords,
+        attendanceRate: totalRecords > 0 ? Math.round((presentRecords / totalRecords) * 100) : 0
+      };
+    } catch (error) {
+      console.error('Error in getClassAttendanceStats:', error);
+      return {
+        totalSessions: 0,
+        totalRecords: 0,
+        presentRecords: 0,
+        absentRecords: 0,
+        attendanceRate: 0
+      };
+    }
   },
 };

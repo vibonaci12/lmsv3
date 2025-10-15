@@ -13,28 +13,17 @@ import {
   SimpleGrid,
   Paper,
   Table,
-  Tabs,
-  Progress,
-  Alert,
-  Modal,
-  TextInput,
-  Textarea,
-  NumberInput,
-  Select
+  Progress
 } from '@mantine/core';
-import { DateInput } from '@mantine/dates';
 import { 
   IconArrowLeft,
   IconClipboardList,
-  IconCalendar,
   IconUsers,
   IconEdit,
   IconTrash,
   IconCopy,
   IconClock,
   IconCheck,
-  IconX,
-  IconAlertCircle,
   IconTrophy,
   IconFileText
 } from '@tabler/icons-react';
@@ -44,7 +33,7 @@ import { assignmentService } from '../../services/assignmentService';
 import { submissionService } from '../../services/submissionService';
 import { LoadingSpinner, EmptyState, ConfirmDialog } from '../../components';
 import { notifications } from '@mantine/notifications';
-import { formatGrade } from '../../utils/romanNumerals';
+// import { formatGrade } from '../../utils/romanNumerals';
 import dayjs from 'dayjs';
 
 export function AssignmentDetail() {
@@ -56,7 +45,6 @@ export function AssignmentDetail() {
   const [loading, setLoading] = useState(true);
   const [assignment, setAssignment] = useState<Assignment | null>(null);
   const [submissions, setSubmissions] = useState<Submission[]>([]);
-  const [editModalOpen, setEditModalOpen] = useState(false);
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
 
   useEffect(() => {
@@ -72,7 +60,7 @@ export function AssignmentDetail() {
       setLoading(true);
       const [assignmentData, submissionsData] = await Promise.all([
         assignmentService.getAssignmentById(id),
-        submissionService.getAssignmentSubmissions(id)
+        submissionService.getStudentSubmissions(id)
       ]);
 
       setAssignment(assignmentData);
@@ -93,7 +81,7 @@ export function AssignmentDetail() {
     if (!assignment) return;
 
     try {
-      await assignmentService.deleteAssignment(assignment.id);
+      await assignmentService.deleteAssignment(assignment.id, teacher.id);
       notifications.show({
         title: 'Berhasil',
         message: 'Tugas berhasil dihapus',
@@ -113,7 +101,7 @@ export function AssignmentDetail() {
     const now = new Date();
     const deadline = new Date(assignment.deadline);
     
-    if (!assignment.is_published) return { label: 'Draft', color: 'gray' };
+    if (assignment.assignment_type === 'tambahan') return { label: 'Tambahan', color: 'orange' };
     if (deadline <= now) return { label: 'Expired', color: 'red' };
     return { label: 'Active', color: 'green' };
   };
@@ -172,15 +160,15 @@ export function AssignmentDetail() {
             <div>
               <Title order={1}>{assignment.title}</Title>
               <Group gap="sm" mt="xs">
-                <Badge color={getAssignmentTypeColor(assignment.type)} variant="light">
-                  {getAssignmentTypeLabel(assignment.type)}
+                <Badge color={getAssignmentTypeColor(assignment.assignment_type)} variant="light">
+                  {getAssignmentTypeLabel(assignment.assignment_type)}
                 </Badge>
                 <Badge color={status.color} variant="light">
                   {status.label}
                 </Badge>
-                {assignment.class && (
+                {assignment.class_id && (
                   <Badge variant="outline">
-                    {assignment.class.name} - {formatGrade(assignment.class.grade)}
+                    Kelas {assignment.target_grade}
                   </Badge>
                 )}
               </Group>
@@ -191,7 +179,7 @@ export function AssignmentDetail() {
             <Button
               leftSection={<IconEdit size={16} />}
               variant="light"
-              onClick={() => setEditModalOpen(true)}
+              onClick={() => {/* Edit functionality not implemented */}}
             >
               Edit Tugas
             </Button>
@@ -359,7 +347,7 @@ export function AssignmentDetail() {
                     <Table.Th>Waktu Submit</Table.Th>
                     <Table.Th>Nilai</Table.Th>
                     <Table.Th>Feedback</Table.Th>
-                    <Table.Th width={100}></Table.Th>
+                    <Table.Th style={{ width: 100 }}></Table.Th>
                   </Table.Tr>
                 </Table.Thead>
                 <Table.Tbody>
@@ -368,8 +356,8 @@ export function AssignmentDetail() {
                       <Table.Td>
                         <Group gap="sm">
                           <div>
-                            <Text fw={500}>{submission.student?.full_name || 'Unknown'}</Text>
-                            <Text size="sm" c="dimmed">{submission.student?.email}</Text>
+                            <Text fw={500}>Student {submission.student_id}</Text>
+                            <Text size="sm" c="dimmed">ID: {submission.student_id}</Text>
                           </div>
                         </Group>
                       </Table.Td>

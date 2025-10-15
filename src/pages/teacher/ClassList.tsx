@@ -25,7 +25,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import { Class } from '../../types';
 import { classService } from '../../services/classService';
 import { ClassCard, LoadingSpinner, EmptyState, ConfirmDialog } from '../../components';
-import { GRADE_OPTIONS, formatGrade } from '../../utils/romanNumerals';
+import { GRADE_OPTIONS } from '../../utils/romanNumerals';
 // import { useNavigate } from 'react-router-dom';
 import { notifications } from '@mantine/notifications';
 
@@ -201,7 +201,7 @@ export function ClassList() {
     form.setValues({
       name: classData.name,
       grade: classData.grade,
-      subject: classData.subject,
+        // subject: classData.subject, // Subject not available in database
       description: classData.description || '',
     });
     setEditModalOpen(true);

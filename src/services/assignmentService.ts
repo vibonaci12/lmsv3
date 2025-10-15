@@ -11,6 +11,7 @@ export const assignmentService = {
       assignment_type: 'wajib' | 'tambahan';
       class_id?: string;
       target_grade?: '10' | '11' | '12';
+      drive_link?: string | null;
       created_by: string;
     },
     questions: Array<{
@@ -38,6 +39,39 @@ export const assignmentService = {
       .insert(questionsWithAssignmentId);
 
     if (questionsError) throw questionsError;
+
+    await this.distributeAssignment(assignment);
+
+    await supabase.from('activity_logs').insert({
+      teacher_id: assignmentData.created_by,
+      action: 'create',
+      entity_type: 'assignment',
+      entity_id: assignment.id,
+      description: `Created assignment ${assignmentData.title}`,
+    });
+
+    return assignment;
+  },
+
+  async createSimpleAssignment(assignmentData: {
+    title: string;
+    description?: string;
+    deadline: string;
+    total_points: number;
+    assignment_type: 'wajib' | 'tambahan';
+    class_id?: string;
+    target_grade?: '10' | '11' | '12';
+    drive_link?: string | null;
+    created_by: string;
+    is_published?: boolean;
+  }) {
+    const { data: assignment, error: assignmentError } = await supabase
+      .from('assignments')
+      .insert(assignmentData)
+      .select()
+      .single();
+
+    if (assignmentError) throw assignmentError;
 
     await this.distributeAssignment(assignment);
 

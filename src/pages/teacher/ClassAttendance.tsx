@@ -94,9 +94,8 @@ export function ClassAttendance() {
       setLoading(true);
       
       // Load class data and statistics in parallel
-      const [classInfo, assignmentStats, attendanceStats] = await Promise.all([
+      const [classInfo, attendanceStats] = await Promise.all([
         classService.getClassById(id),
-        attendanceService.getClassAttendanceStats(id),
         attendanceService.getClassAttendanceStats(id)
       ]);
 
@@ -109,7 +108,7 @@ export function ClassAttendance() {
       setStudents(enrolledStudents);
       setAttendanceSummary(attendanceStats);
       
-      // Load attendance history and summary
+      // Load attendance history
       await loadAttendanceHistory();
     } catch (error) {
       console.error('Error loading data:', error);
@@ -129,9 +128,10 @@ export function ClassAttendance() {
     try {
       const dateStr = dayjs(selectedDate).format('YYYY-MM-DD');
       const history = await attendanceService.getAttendanceByClassAndDate(id, dateStr);
-      setAttendanceHistory(history);
+      setAttendanceHistory(history || []);
     } catch (error) {
       console.error('Error loading attendance history:', error);
+      setAttendanceHistory([]);
     }
   };
 
@@ -189,20 +189,20 @@ export function ClassAttendance() {
     try {
       const dateStr = dayjs(selectedDate).format('YYYY-MM-DD');
       
-      // Mark attendance for students with status
-      for (const studentId of studentsWithStatus) {
-        const status = attendanceStatuses[studentId];
-        const notes = attendanceNotes[studentId] || '';
-        
-        await attendanceService.markAttendance({
-          student_id: studentId,
-          class_id: id,
-          date: dateStr,
-          status: status,
-          notes: notes,
-          marked_by: teacher.id,
-        });
-      }
+      // Prepare attendance data for batch processing
+      const attendanceData = studentsWithStatus.map(studentId => ({
+        student_id: studentId,
+        status: attendanceStatuses[studentId] as 'present' | 'absent' | 'sick' | 'permission',
+        notes: attendanceNotes[studentId] || '',
+      }));
+
+      // Mark attendance using batch method
+      await attendanceService.markAttendanceBatch(
+        id,
+        dateStr,
+        attendanceData,
+        teacher.id
+      );
 
       notifications.show({
         title: 'Berhasil',
@@ -225,6 +225,10 @@ export function ClassAttendance() {
   const getAttendanceStatus = (studentId: string) => {
     const attendance = attendanceHistory.find(a => a.student_id === studentId);
     return attendance ? attendance.status : null;
+  };
+
+  const getAttendanceStatusFromForm = (studentId: string) => {
+    return attendanceStatuses[studentId] || null;
   };
 
   const getStatusColor = (status: string) => {
@@ -264,7 +268,7 @@ export function ClassAttendance() {
     
     if (showOnlyAbsent) {
       const attendanceStatus = getAttendanceStatus(student.id);
-      return matchesSearch && attendanceStatus === null;
+      return matchesSearch && (attendanceStatus === null || attendanceStatus === 'absent');
     }
     
     return matchesSearch;
@@ -515,8 +519,11 @@ export function ClassAttendance() {
                     <Stack gap="xs">
                       {filteredStudents.map((student) => {
                         const attendanceStatus = getAttendanceStatus(student.id);
-                        const currentStatus = attendanceStatuses[student.id] || '';
+                        const currentStatus = getAttendanceStatusFromForm(student.id) || '';
                         const currentNote = attendanceNotes[student.id] || '';
+                        
+                        // Use form status if available, otherwise use saved status
+                        const displayStatus = currentStatus || attendanceStatus;
                         
                         return (
                           <Paper 
@@ -570,14 +577,14 @@ export function ClassAttendance() {
                                   </Group>
                                 </Radio.Group>
 
-                                {attendanceStatus && (
+                                {displayStatus && (
                                   <Badge 
-                                    color={getStatusColor(attendanceStatus)}
+                                    color={getStatusColor(displayStatus)}
                                     variant="light" 
                                     size="lg"
-                                    leftSection={getStatusIcon(attendanceStatus)}
+                                    leftSection={getStatusIcon(displayStatus)}
                                   >
-                                    {getStatusLabel(attendanceStatus)}
+                                    {getStatusLabel(displayStatus)}
                                   </Badge>
                                 )}
                               </Group>

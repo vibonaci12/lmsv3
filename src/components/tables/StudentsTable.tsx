@@ -62,28 +62,29 @@ export function StudentsTable({
   };
 
   return (
-    <Table striped highlightOnHover>
-      <Table.Thead>
-        <Table.Tr>
-          {showSelection && (
-            <Table.Th>
-              <Checkbox
-                checked={selectedStudents.length === students.length && students.length > 0}
-                indeterminate={selectedStudents.length > 0 && selectedStudents.length < students.length}
-                onChange={(event) => handleSelectAll(event.currentTarget.checked)}
-              />
-            </Table.Th>
-          )}
-          <Table.Th>Siswa</Table.Th>
-          <Table.Th>Email</Table.Th>
-          <Table.Th>Tanggal Lahir</Table.Th>
-          <Table.Th>Status</Table.Th>
-          <Table.Th>Kelas</Table.Th>
-          <Table.Th>Bergabung</Table.Th>
-          {showActions && <Table.Th>Aksi</Table.Th>}
-        </Table.Tr>
-      </Table.Thead>
-      <Table.Tbody>
+    <div style={{ overflowX: 'auto' }}>
+      <Table striped highlightOnHover style={{ minWidth: 900 }}>
+        <Table.Thead>
+          <Table.Tr>
+            {showSelection && (
+              <Table.Th>
+                <Checkbox
+                  checked={selectedStudents.length === students.length && students.length > 0}
+                  indeterminate={selectedStudents.length > 0 && selectedStudents.length < students.length}
+                  onChange={(event) => handleSelectAll(event.currentTarget.checked)}
+                />
+              </Table.Th>
+            )}
+            <Table.Th>Siswa</Table.Th>
+            <Table.Th>Email</Table.Th>
+            <Table.Th>Tanggal Lahir</Table.Th>
+            <Table.Th>Status</Table.Th>
+            <Table.Th>Kelas</Table.Th>
+            <Table.Th>Bergabung</Table.Th>
+            {showActions && <Table.Th>Aksi</Table.Th>}
+          </Table.Tr>
+        </Table.Thead>
+        <Table.Tbody>
         {students.map((student) => (
           <Table.Tr key={student.id}>
             {showSelection && (
@@ -177,7 +178,8 @@ export function StudentsTable({
             )}
           </Table.Tr>
         ))}
-      </Table.Tbody>
-    </Table>
+        </Table.Tbody>
+      </Table>
+    </div>
   );
 }

@@ -39,6 +39,7 @@ export interface Assignment {
   assignment_type: 'wajib' | 'tambahan';
   class_id?: string | null;
   target_grade?: '10' | '11' | '12' | null;
+  drive_link?: string | null;
   created_at: string;
   created_by?: string | null;
   updated_at: string;

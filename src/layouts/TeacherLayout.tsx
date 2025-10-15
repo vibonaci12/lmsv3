@@ -28,9 +28,8 @@ export function TeacherLayout() {
   const navItems = [
     { icon: LayoutDashboard, label: 'Dashboard', path: '/teacher/dashboard' },
     { icon: BookOpen, label: 'Kelas', path: '/teacher/classes' },
-    { icon: Users, label: 'Siswa', path: '/teacher/students' },
     { icon: ClipboardList, label: 'Tugas', path: '/teacher/assignments' },
-    { icon: FileText, label: 'Penilaian', path: '/teacher/grading' },
+    { icon: FileText, label: 'Leaderboard', path: '/teacher/leaderboard' },
   ];
 
   return (
