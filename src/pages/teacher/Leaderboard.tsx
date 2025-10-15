@@ -35,7 +35,7 @@ import {
   IconTrendingUp
 } from '@tabler/icons-react';
 import { useAuth } from '../../contexts/AuthContext';
-import { LoadingSpinner, EmptyState } from '../../components';
+import { LoadingSpinner, EmptyState, Pagination, usePagination } from '../../components';
 import { notifications } from '@mantine/notifications';
 import { formatGrade } from '../../utils/romanNumerals';
 import { supabase } from '../../lib/supabase';
@@ -74,6 +74,18 @@ export function Leaderboard() {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedGrade, setSelectedGrade] = useState<string>('');
   const [activeTab, setActiveTab] = useState<string>('overall');
+  
+  // Pagination
+  const {
+    currentPage,
+    itemsPerPage,
+    totalItems,
+    totalPages,
+    paginatedData: paginatedStudents,
+    handlePageChange,
+    handleItemsPerPageChange,
+    resetPagination
+  } = usePagination(filteredStudents, 10, 1);
 
   useEffect(() => {
     loadData();
@@ -81,7 +93,8 @@ export function Leaderboard() {
 
   useEffect(() => {
     filterStudents();
-  }, [students, searchTerm, selectedGrade]);
+    resetPagination();
+  }, [students, searchTerm, selectedGrade, resetPagination]);
 
   const loadData = async () => {
     try {
@@ -371,22 +384,21 @@ export function Leaderboard() {
               </Text>
             </Group>
 
-            <ScrollArea h={600}>
-              <div style={{ overflowX: 'auto' }}>
-                <Table style={{ minWidth: 800 }}>
-                  <Table.Thead>
-                    <Table.Tr>
-                      <Table.Th width={80}>Peringkat</Table.Th>
-                      <Table.Th>Siswa</Table.Th>
-                      <Table.Th>Kelas</Table.Th>
-                      <Table.Th>Tugas</Table.Th>
-                      <Table.Th>Nilai</Table.Th>
-                      <Table.Th>Progress</Table.Th>
-                      <Table.Th width={100}></Table.Th>
-                    </Table.Tr>
-                  </Table.Thead>
-                  <Table.Tbody>
-                    {filteredStudents.map((student) => (
+            <div style={{ overflowX: 'auto' }}>
+              <Table style={{ minWidth: 800 }}>
+                <Table.Thead>
+                  <Table.Tr>
+                    <Table.Th width={80}>Peringkat</Table.Th>
+                    <Table.Th>Siswa</Table.Th>
+                    <Table.Th>Kelas</Table.Th>
+                    <Table.Th>Tugas</Table.Th>
+                    <Table.Th>Nilai</Table.Th>
+                    <Table.Th>Progress</Table.Th>
+                    <Table.Th width={100}></Table.Th>
+                  </Table.Tr>
+                </Table.Thead>
+                <Table.Tbody>
+                  {paginatedStudents.map((student) => (
                       <Table.Tr key={student.id}>
                         <Table.Td>
                           <Group gap="xs" justify="center">
@@ -459,10 +471,22 @@ export function Leaderboard() {
                         </Table.Td>
                       </Table.Tr>
                     ))}
-                  </Table.Tbody>
-                </Table>
-              </div>
-            </ScrollArea>
+                </Table.Tbody>
+              </Table>
+            </div>
+            
+            {/* Pagination */}
+            <Pagination
+              totalItems={totalItems}
+              itemsPerPage={itemsPerPage}
+              currentPage={currentPage}
+              onPageChange={handlePageChange}
+              onItemsPerPageChange={handleItemsPerPageChange}
+              showItemsPerPage={true}
+              showTotal={true}
+              showPageInput={false}
+              itemsPerPageOptions={[5, 10, 25, 50]}
+            />
           </Stack>
         </Card>
       </Stack>

@@ -3,6 +3,7 @@ import { useDisclosure } from '@mantine/hooks';
 import { Outlet, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { Student } from '../types';
+import { BottomNavigation } from '../components';
 import {
   LayoutDashboard,
   BookOpen,
@@ -94,9 +95,12 @@ export function StudentLayout() {
         ))}
       </AppShell.Navbar>
 
-      <AppShell.Main>
+      <AppShell.Main style={{ paddingBottom: '80px' }}>
         <Outlet />
       </AppShell.Main>
+      
+      {/* Bottom Navigation for Mobile */}
+      <BottomNavigation role="student" />
     </AppShell>
   );
 }

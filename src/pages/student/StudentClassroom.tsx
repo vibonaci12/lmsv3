@@ -11,7 +11,6 @@ import {
   Badge,
   Button,
   Modal,
-  TextInput,
   Textarea,
   Tabs,
   Divider,
@@ -19,10 +18,7 @@ import {
   ThemeIcon,
   Table,
   Avatar,
-  Progress,
   FileInput,
-  Select,
-  Tooltip
 } from '@mantine/core';
 import { 
   IconBook,
@@ -40,12 +36,9 @@ import {
   IconPresentation,
   IconUpload,
   IconEye,
-  IconCalendar,
-  IconUser,
-  IconTrophy
 } from '@tabler/icons-react';
 import { useAuth } from '../../contexts/AuthContext';
-import { LoadingSpinner, EmptyState } from '../../components';
+import { LoadingSpinner, EmptyState, Pagination, usePagination } from '../../components';
 import { notifications } from '@mantine/notifications';
 import { formatGrade } from '../../utils/romanNumerals';
 import { supabase } from '../../lib/supabase';
@@ -148,6 +141,17 @@ export function StudentClassroom() {
   const [assignments, setAssignments] = useState<Assignment[]>([]);
   const [activeTab, setActiveTab] = useState<string>('overview');
   
+  // Pagination for assignments
+  const {
+    currentPage,
+    itemsPerPage,
+    totalItems,
+    paginatedData: paginatedAssignments,
+    handlePageChange,
+    handleItemsPerPageChange,
+    resetPagination
+  } = usePagination(assignments, 5, 1);
+  
   // Assignment submission states
   const [submissionModal, setSubmissionModal] = useState(false);
   const [selectedAssignment, setSelectedAssignment] = useState<Assignment | null>(null);
@@ -176,6 +180,7 @@ export function StudentClassroom() {
       setAnnouncements(announcementsData);
       setMaterials(materialsData);
       setAssignments(assignmentsData);
+      resetPagination();
     } catch (error) {
       console.error('Error loading classroom data:', error);
       notifications.show({
@@ -386,10 +391,11 @@ export function StudentClassroom() {
             .single();
 
           // Determine type from file_type
-          const getTypeFromFileType = (fileType: string) => {
+          const getTypeFromFileType = (fileType: string): 'document' | 'video' | 'presentation' | 'link' => {
             if (fileType?.includes('video')) return 'video';
             if (fileType?.includes('pdf') || fileType?.includes('document')) return 'document';
-            if (fileType?.includes('image')) return 'image';
+            if (fileType?.includes('presentation') || fileType?.includes('ppt') || fileType?.includes('pptx')) return 'presentation';
+            if (fileType?.includes('link') || fileType?.includes('url')) return 'link';
             return 'document';
           };
 
@@ -773,85 +779,100 @@ export function StudentClassroom() {
                   description="Belum ada tugas yang diberikan untuk Anda."
                 />
               ) : (
-                <div style={{ overflowX: 'auto' }}>
-                  <Table striped highlightOnHover minWidth={800}>
-                    <Table.Thead>
-                      <Table.Tr>
-                        <Table.Th>Judul Tugas</Table.Th>
-                        <Table.Th>Deadline</Table.Th>
-                        <Table.Th>Nilai</Table.Th>
-                        <Table.Th>Status</Table.Th>
-                        <Table.Th>Aksi</Table.Th>
-                      </Table.Tr>
-                    </Table.Thead>
-                    <Table.Tbody>
-                    {assignments.map((assignment) => {
-                      const status = getAssignmentStatus(assignment);
-                      const isOverdue = new Date(assignment.deadline) < new Date() && !assignment.submission;
-                      
-                      return (
-                        <Table.Tr key={assignment.id}>
-                          <Table.Td>
-                            <div>
-                              <Text fw={500}>{assignment.title}</Text>
-                              <Text size="xs" c="dimmed">
-                                {assignment.class.name} • {assignment.assignment_type}
+                <>
+                  <div style={{ overflowX: 'auto' }}>
+                    <Table striped highlightOnHover style={{ minWidth: 800 }}>
+                      <Table.Thead>
+                        <Table.Tr>
+                          <Table.Th>Judul Tugas</Table.Th>
+                          <Table.Th>Deadline</Table.Th>
+                          <Table.Th>Nilai</Table.Th>
+                          <Table.Th>Status</Table.Th>
+                          <Table.Th>Aksi</Table.Th>
+                        </Table.Tr>
+                      </Table.Thead>
+                      <Table.Tbody>
+                      {paginatedAssignments.map((assignment) => {
+                        const status = getAssignmentStatus(assignment);
+                        const isOverdue = new Date(assignment.deadline) < new Date() && !assignment.submission;
+                        
+                        return (
+                          <Table.Tr key={assignment.id}>
+                            <Table.Td>
+                              <div>
+                                <Text fw={500}>{assignment.title}</Text>
+                                <Text size="xs" c="dimmed">
+                                  {assignment.class.name} • {assignment.assignment_type}
+                                </Text>
+                              </div>
+                            </Table.Td>
+                            <Table.Td>
+                              <Text size="sm" c={isOverdue ? 'red' : 'dimmed'}>
+                                {dayjs(assignment.deadline).format('DD MMM YYYY')}
                               </Text>
-                            </div>
-                          </Table.Td>
-                          <Table.Td>
-                            <Text size="sm" c={isOverdue ? 'red' : 'dimmed'}>
-                              {dayjs(assignment.deadline).format('DD MMM YYYY')}
-                            </Text>
-                          </Table.Td>
-                          <Table.Td>
-                            {assignment.submission?.grade ? (
-                              <Text fw={500} c="green">
-                                {assignment.submission.grade}/{assignment.total_points}
-                              </Text>
-                            ) : (
-                              <Text size="sm" c="dimmed">-</Text>
-                            )}
-                          </Table.Td>
-                          <Table.Td>
-                            <Badge color={status.color} variant="light">
-                              {status.text}
-                            </Badge>
-                          </Table.Td>
-                          <Table.Td>
-                            <Group gap="xs">
-                              <Button
-                                size="xs"
-                                variant="light"
-                                leftSection={<IconEye size={14} />}
-                                onClick={() => {
-                                  setSelectedAssignment(assignment);
-                                  setSubmissionModal(true);
-                                }}
-                              >
-                                Lihat
-                              </Button>
-                              {!assignment.submission && (
+                            </Table.Td>
+                            <Table.Td>
+                              {assignment.submission?.grade ? (
+                                <Text fw={500} c="green">
+                                  {assignment.submission.grade}/{assignment.total_points}
+                                </Text>
+                              ) : (
+                                <Text size="sm" c="dimmed">-</Text>
+                              )}
+                            </Table.Td>
+                            <Table.Td>
+                              <Badge color={status.color} variant="light">
+                                {status.text}
+                              </Badge>
+                            </Table.Td>
+                            <Table.Td>
+                              <Group gap="xs">
                                 <Button
                                   size="xs"
-                                  variant="filled"
-                                  leftSection={<IconUpload size={14} />}
+                                  variant="light"
+                                  leftSection={<IconEye size={14} />}
                                   onClick={() => {
                                     setSelectedAssignment(assignment);
                                     setSubmissionModal(true);
                                   }}
                                 >
-                                  Kumpulkan
+                                  Lihat
                                 </Button>
-                              )}
-                            </Group>
-                          </Table.Td>
-                        </Table.Tr>
-                      );
-                    })}
-                    </Table.Tbody>
-                  </Table>
-                </div>
+                                {!assignment.submission && (
+                                  <Button
+                                    size="xs"
+                                    variant="filled"
+                                    leftSection={<IconUpload size={14} />}
+                                    onClick={() => {
+                                      setSelectedAssignment(assignment);
+                                      setSubmissionModal(true);
+                                    }}
+                                  >
+                                    Kumpulkan
+                                  </Button>
+                                )}
+                              </Group>
+                            </Table.Td>
+                          </Table.Tr>
+                        );
+                      })}
+                      </Table.Tbody>
+                    </Table>
+                  </div>
+                  
+                  {/* Pagination for assignments */}
+                  <Pagination
+                    totalItems={totalItems}
+                    itemsPerPage={itemsPerPage}
+                    currentPage={currentPage}
+                    onPageChange={handlePageChange}
+                    onItemsPerPageChange={handleItemsPerPageChange}
+                    showItemsPerPage={true}
+                    showTotal={true}
+                    showPageInput={false}
+                    itemsPerPageOptions={[5, 10, 25]}
+                  />
+                </>
               )}
             </Stack>
           </Tabs.Panel>
@@ -925,12 +946,16 @@ export function StudentClassroom() {
                         color={
                           material.type === 'video' ? 'red' :
                           material.type === 'document' ? 'blue' :
+                          material.type === 'presentation' ? 'purple' :
+                          material.type === 'link' ? 'green' :
                           'gray'
                         }
                       >
                         {material.type === 'video' ? <IconVideo size={20} /> :
                          material.type === 'document' ? <IconFile size={20} /> :
-                         <IconPresentation size={20} />}
+                         material.type === 'presentation' ? <IconPresentation size={20} /> :
+                         material.type === 'link' ? <IconExternalLink size={20} /> :
+                         <IconFile size={20} />}
                       </ThemeIcon>
                       <div style={{ flex: 1 }}>
                         <Text fw={600} size="lg">{material.title}</Text>

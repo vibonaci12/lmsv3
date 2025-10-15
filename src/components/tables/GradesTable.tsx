@@ -1,5 +1,6 @@
-import { Table, Text, Badge, Group, Progress, Avatar } from '@mantine/core';
+import { Table, Text, Badge, Group, Progress, Avatar, Card } from '@mantine/core';
 import { IconTrendingUp, IconTrendingDown, IconMinus } from '@tabler/icons-react';
+import { Pagination } from '../common/Pagination';
 
 interface GradeData {
   student_id: string;
@@ -17,12 +18,24 @@ interface GradesTableProps {
   grades: GradeData[];
   showTrend?: boolean;
   previousGrades?: Record<string, number>;
+  showPagination?: boolean;
+  currentPage?: number;
+  itemsPerPage?: number;
+  totalItems?: number;
+  onPageChange?: (page: number) => void;
+  onItemsPerPageChange?: (itemsPerPage: number) => void;
 }
 
 export function GradesTable({ 
   grades, 
   showTrend = false,
-  previousGrades = {}
+  previousGrades = {},
+  showPagination = false,
+  currentPage = 1,
+  itemsPerPage = 10,
+  totalItems = 0,
+  onPageChange,
+  onItemsPerPageChange
 }: GradesTableProps) {
   const getGradeColor = (percentage: number) => {
     if (percentage >= 90) return 'green';
@@ -58,90 +71,108 @@ export function GradesTable({
   };
 
   return (
-    <Table striped highlightOnHover>
-      <Table.Thead>
-        <Table.Tr>
-          <Table.Th>Siswa</Table.Th>
-          <Table.Th>Nilai</Table.Th>
-          <Table.Th>Persentase</Table.Th>
-          <Table.Th>Progress</Table.Th>
-          <Table.Th>Poin</Table.Th>
-          {showTrend && <Table.Th>Tren</Table.Th>}
-        </Table.Tr>
-      </Table.Thead>
-      <Table.Tbody>
-        {grades.map((grade) => {
-          const gradeColor = getGradeColor(grade.percentage);
-          const gradeLabel = getGradeLabel(grade.percentage);
-          const completionRate = getCompletionRate(grade.assignments_completed, grade.total_assignments);
-          const previousGrade = previousGrades[grade.student_id];
-          
-          return (
-            <Table.Tr key={grade.student_id}>
-              <Table.Td>
-                <Group gap="sm">
-                  <Avatar size="sm" radius="xl" color="blue">
-                    {grade.student_name.charAt(0)}
-                  </Avatar>
-                  <div>
-                    <Text fw={500} size="sm">
-                      {grade.student_name}
-                    </Text>
-                    <Text size="xs" c="dimmed">
-                      {grade.student_email}
-                    </Text>
-                  </div>
-                </Group>
-              </Table.Td>
-              <Table.Td>
-                <Badge 
-                  color={gradeColor} 
-                  variant="light"
-                  size="lg"
-                >
-                  {gradeLabel}
-                </Badge>
-              </Table.Td>
-              <Table.Td>
-                <Text size="sm" fw={500}>
-                  {grade.percentage.toFixed(1)}%
-                </Text>
-              </Table.Td>
-              <Table.Td>
-                <div>
-                  <Progress 
-                    value={completionRate} 
-                    size="sm" 
-                    color={completionRate >= 80 ? 'green' : completionRate >= 60 ? 'yellow' : 'red'}
-                    mb={4}
-                  />
-                  <Text size="xs" c="dimmed">
-                    {grade.assignments_completed}/{grade.total_assignments} tugas
-                  </Text>
-                </div>
-              </Table.Td>
-              <Table.Td>
-                <Text size="sm" fw={500}>
-                  {grade.total_points}/{grade.max_points}
-                </Text>
-              </Table.Td>
-              {showTrend && (
-                <Table.Td>
-                  <Group gap="xs">
-                    {getTrendIcon(grade.percentage, previousGrade)}
-                    {previousGrade && (
-                      <Text size="xs" c="dimmed">
-                        {grade.percentage > previousGrade ? '+' : ''}
-                        {(grade.percentage - previousGrade).toFixed(1)}%
-                      </Text>
-                    )}
-                  </Group>
-                </Table.Td>
-              )}
+    <Card withBorder radius="md">
+      <div style={{ overflowX: 'auto' }}>
+        <Table striped highlightOnHover>
+          <Table.Thead>
+            <Table.Tr>
+              <Table.Th>Siswa</Table.Th>
+              <Table.Th>Nilai</Table.Th>
+              <Table.Th>Persentase</Table.Th>
+              <Table.Th>Progress</Table.Th>
+              <Table.Th>Poin</Table.Th>
+              {showTrend && <Table.Th>Tren</Table.Th>}
             </Table.Tr>
-          );
-        })}
-      </Table.Tbody>
-    </Table>
+          </Table.Thead>
+          <Table.Tbody>
+            {grades.map((grade) => {
+              const gradeColor = getGradeColor(grade.percentage);
+              const gradeLabel = getGradeLabel(grade.percentage);
+              const completionRate = getCompletionRate(grade.assignments_completed, grade.total_assignments);
+              const previousGrade = previousGrades[grade.student_id];
+              
+              return (
+                <Table.Tr key={grade.student_id}>
+                  <Table.Td>
+                    <Group gap="sm">
+                      <Avatar size="sm" radius="xl" color="blue">
+                        {grade.student_name.charAt(0)}
+                      </Avatar>
+                      <div>
+                        <Text fw={500} size="sm">
+                          {grade.student_name}
+                        </Text>
+                        <Text size="xs" c="dimmed">
+                          {grade.student_email}
+                        </Text>
+                      </div>
+                    </Group>
+                  </Table.Td>
+                  <Table.Td>
+                    <Badge 
+                      color={gradeColor} 
+                      variant="light"
+                      size="lg"
+                    >
+                      {gradeLabel}
+                    </Badge>
+                  </Table.Td>
+                  <Table.Td>
+                    <Text size="sm" fw={500}>
+                      {grade.percentage.toFixed(1)}%
+                    </Text>
+                  </Table.Td>
+                  <Table.Td>
+                    <div>
+                      <Progress 
+                        value={completionRate} 
+                        size="sm" 
+                        color={completionRate >= 80 ? 'green' : completionRate >= 60 ? 'yellow' : 'red'}
+                        mb={4}
+                      />
+                      <Text size="xs" c="dimmed">
+                        {grade.assignments_completed}/{grade.total_assignments} tugas
+                      </Text>
+                    </div>
+                  </Table.Td>
+                  <Table.Td>
+                    <Text size="sm" fw={500}>
+                      {grade.total_points}/{grade.max_points}
+                    </Text>
+                  </Table.Td>
+                  {showTrend && (
+                    <Table.Td>
+                      <Group gap="xs">
+                        {getTrendIcon(grade.percentage, previousGrade)}
+                        {previousGrade && (
+                          <Text size="xs" c="dimmed">
+                            {grade.percentage > previousGrade ? '+' : ''}
+                            {(grade.percentage - previousGrade).toFixed(1)}%
+                          </Text>
+                        )}
+                      </Group>
+                    </Table.Td>
+                  )}
+                </Table.Tr>
+              );
+            })}
+          </Table.Tbody>
+        </Table>
+      </div>
+      
+      {showPagination && onPageChange && onItemsPerPageChange && (
+        <Pagination
+          totalItems={totalItems}
+          itemsPerPage={itemsPerPage}
+          currentPage={currentPage}
+          onPageChange={onPageChange}
+          onItemsPerPageChange={onItemsPerPageChange}
+          showItemsPerPage={true}
+          showTotal={true}
+          showPageInput={false}
+          itemsPerPageOptions={[5, 10, 25, 50]}
+        />
+      )}
+    </Card>
   );
 }

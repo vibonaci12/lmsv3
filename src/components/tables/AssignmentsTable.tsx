@@ -1,7 +1,8 @@
-import { Table, Text, Badge, Group, ActionIcon, Menu, Progress } from '@mantine/core';
+import { Table, Text, Badge, Group, ActionIcon, Menu, Progress, Card } from '@mantine/core';
 import { IconDots, IconEdit, IconTrash, IconEye, IconUsers } from '@tabler/icons-react';
 import { Assignment } from '../../types';
 import { useNavigate } from 'react-router-dom';
+import { Pagination } from '../common/Pagination';
 
 interface AssignmentsTableProps {
   assignments: (Assignment & {
@@ -12,13 +13,25 @@ interface AssignmentsTableProps {
   onEdit?: (assignment: Assignment) => void;
   onDelete?: (assignmentId: string) => void;
   showActions?: boolean;
+  showPagination?: boolean;
+  currentPage?: number;
+  itemsPerPage?: number;
+  totalItems?: number;
+  onPageChange?: (page: number) => void;
+  onItemsPerPageChange?: (itemsPerPage: number) => void;
 }
 
 export function AssignmentsTable({ 
   assignments, 
   onEdit, 
   onDelete, 
-  showActions = true 
+  showActions = true,
+  showPagination = false,
+  currentPage = 1,
+  itemsPerPage = 10,
+  totalItems = 0,
+  onPageChange,
+  onItemsPerPageChange
 }: AssignmentsTableProps) {
   const navigate = useNavigate();
 
@@ -58,134 +71,150 @@ export function AssignmentsTable({
   };
 
   return (
-    <div style={{ overflowX: 'auto' }}>
-      <Table striped highlightOnHover style={{ minWidth: 900 }}>
-        <Table.Thead>
-          <Table.Tr>
-            <Table.Th>Tugas</Table.Th>
-            <Table.Th>Tipe</Table.Th>
-            <Table.Th>Target</Table.Th>
-            <Table.Th>Deadline</Table.Th>
-            <Table.Th>Status</Table.Th>
-            <Table.Th>Pengumpulan</Table.Th>
-            <Table.Th>Poin</Table.Th>
-            {showActions && <Table.Th>Aksi</Table.Th>}
-          </Table.Tr>
-        </Table.Thead>
-        <Table.Tbody>
-        {assignments.map((assignment) => {
-          const deadlineStatus = getDeadlineStatus(assignment.deadline);
-          
-          return (
-            <Table.Tr key={assignment.id}>
-              <Table.Td>
-                <div>
-                  <Text fw={500} size="sm" lineClamp={1}>
-                    {assignment.title}
-                  </Text>
-                  {assignment.description && (
-                    <Text size="xs" c="dimmed" lineClamp={1}>
-                      {assignment.description}
+    <Card withBorder radius="md">
+      <div style={{ overflowX: 'auto' }}>
+        <Table striped highlightOnHover style={{ minWidth: 900 }}>
+          <Table.Thead>
+            <Table.Tr>
+              <Table.Th>Tugas</Table.Th>
+              <Table.Th>Tipe</Table.Th>
+              <Table.Th>Target</Table.Th>
+              <Table.Th>Deadline</Table.Th>
+              <Table.Th>Status</Table.Th>
+              <Table.Th>Pengumpulan</Table.Th>
+              <Table.Th>Poin</Table.Th>
+              {showActions && <Table.Th>Aksi</Table.Th>}
+            </Table.Tr>
+          </Table.Thead>
+          <Table.Tbody>
+          {assignments.map((assignment) => {
+            const deadlineStatus = getDeadlineStatus(assignment.deadline);
+            
+            return (
+              <Table.Tr key={assignment.id}>
+                <Table.Td>
+                  <div>
+                    <Text fw={500} size="sm" lineClamp={1}>
+                      {assignment.title}
+                    </Text>
+                    {assignment.description && (
+                      <Text size="xs" c="dimmed" lineClamp={1}>
+                        {assignment.description}
+                      </Text>
+                    )}
+                  </div>
+                </Table.Td>
+                <Table.Td>
+                  <Badge 
+                    color={getTypeColor(assignment.assignment_type)} 
+                    variant="light"
+                    size="sm"
+                  >
+                    {getTypeLabel(assignment.assignment_type)}
+                  </Badge>
+                </Table.Td>
+                <Table.Td>
+                  {assignment.class ? (
+                    <div>
+                      <Text size="sm" fw={500}>
+                        {assignment.class.name}
+                      </Text>
+                      <Text size="xs" c="dimmed">
+                        Kelas {assignment.class.grade}
+                      </Text>
+                    </div>
+                  ) : assignment.target_grade ? (
+                    <Text size="sm">
+                      Kelas {assignment.target_grade}
+                    </Text>
+                  ) : (
+                    <Text size="sm" c="dimmed">
+                      -
                     </Text>
                   )}
-                </div>
-              </Table.Td>
-              <Table.Td>
-                <Badge 
-                  color={getTypeColor(assignment.assignment_type)} 
-                  variant="light"
-                  size="sm"
-                >
-                  {getTypeLabel(assignment.assignment_type)}
-                </Badge>
-              </Table.Td>
-              <Table.Td>
-                {assignment.class ? (
+                </Table.Td>
+                <Table.Td>
                   <div>
-                    <Text size="sm" fw={500}>
-                      {assignment.class.name}
-                    </Text>
-                    <Text size="xs" c="dimmed">
-                      Kelas {assignment.class.grade}
+                    <Text size="sm">
+                      {formatDate(assignment.deadline)}
                     </Text>
                   </div>
-                ) : assignment.target_grade ? (
-                  <Text size="sm">
-                    Kelas {assignment.target_grade}
-                  </Text>
-                ) : (
-                  <Text size="sm" c="dimmed">
-                    -
-                  </Text>
-                )}
-              </Table.Td>
-              <Table.Td>
-                <div>
-                  <Text size="sm">
-                    {formatDate(assignment.deadline)}
-                  </Text>
-                </div>
-              </Table.Td>
-              <Table.Td>
-                <Badge 
-                  color={deadlineStatus.color} 
-                  variant="light"
-                  size="sm"
-                >
-                  {deadlineStatus.text}
-                </Badge>
-              </Table.Td>
-              <Table.Td>
-                <Group gap="xs">
-                  <IconUsers size={14} color="var(--mantine-color-blue-6)" />
-                  <Text size="sm">
-                    {assignment.submissions?.count || 0}
-                  </Text>
-                </Group>
-              </Table.Td>
-              <Table.Td>
-                <Text size="sm" fw={500}>
-                  {assignment.total_points}
-                </Text>
-              </Table.Td>
-              {showActions && (
-                <Table.Td>
-                  <Menu shadow="md" width={200}>
-                    <Menu.Target>
-                      <ActionIcon variant="subtle" color="gray">
-                        <IconDots size={16} />
-                      </ActionIcon>
-                    </Menu.Target>
-                    <Menu.Dropdown>
-                      <Menu.Item
-                        leftSection={<IconEye size={14} />}
-                        onClick={() => navigate(`/teacher/assignments/${assignment.id}`)}
-                      >
-                        Lihat Detail
-                      </Menu.Item>
-                      <Menu.Item
-                        leftSection={<IconEdit size={14} />}
-                        onClick={() => onEdit?.(assignment)}
-                      >
-                        Edit
-                      </Menu.Item>
-                      <Menu.Divider />
-                      <Menu.Item
-                        color="red"
-                        leftSection={<IconTrash size={14} />}
-                        onClick={() => onDelete?.(assignment.id)}
-                      >
-                        Hapus
-                      </Menu.Item>
-                    </Menu.Dropdown>
-                  </Menu>
                 </Table.Td>
-              )}
-            </Table.Tr>
-          );
-        })}
-        </Table.Tbody>
-      </Table>
-    </div>
+                <Table.Td>
+                  <Badge 
+                    color={deadlineStatus.color} 
+                    variant="light"
+                    size="sm"
+                  >
+                    {deadlineStatus.text}
+                  </Badge>
+                </Table.Td>
+                <Table.Td>
+                  <Group gap="xs">
+                    <IconUsers size={14} color="var(--mantine-color-blue-6)" />
+                    <Text size="sm">
+                      {assignment.submissions?.count || 0}
+                    </Text>
+                  </Group>
+                </Table.Td>
+                <Table.Td>
+                  <Text size="sm" fw={500}>
+                    {assignment.total_points}
+                  </Text>
+                </Table.Td>
+                {showActions && (
+                  <Table.Td>
+                    <Menu shadow="md" width={200}>
+                      <Menu.Target>
+                        <ActionIcon variant="subtle" color="gray">
+                          <IconDots size={16} />
+                        </ActionIcon>
+                      </Menu.Target>
+                      <Menu.Dropdown>
+                        <Menu.Item
+                          leftSection={<IconEye size={14} />}
+                          onClick={() => navigate(`/teacher/assignments/${assignment.id}`)}
+                        >
+                          Lihat Detail
+                        </Menu.Item>
+                        <Menu.Item
+                          leftSection={<IconEdit size={14} />}
+                          onClick={() => onEdit?.(assignment)}
+                        >
+                          Edit
+                        </Menu.Item>
+                        <Menu.Divider />
+                        <Menu.Item
+                          color="red"
+                          leftSection={<IconTrash size={14} />}
+                          onClick={() => onDelete?.(assignment.id)}
+                        >
+                          Hapus
+                        </Menu.Item>
+                      </Menu.Dropdown>
+                    </Menu>
+                  </Table.Td>
+                )}
+              </Table.Tr>
+            );
+          })}
+          </Table.Tbody>
+        </Table>
+      </div>
+      
+      {showPagination && onPageChange && onItemsPerPageChange && (
+        <Pagination
+          totalItems={totalItems}
+          itemsPerPage={itemsPerPage}
+          currentPage={currentPage}
+          onPageChange={onPageChange}
+          onItemsPerPageChange={onItemsPerPageChange}
+          showItemsPerPage={true}
+          showTotal={true}
+          showPageInput={false}
+          itemsPerPageOptions={[5, 10, 25, 50]}
+        />
+      )}
+    </Card>
   );
 }

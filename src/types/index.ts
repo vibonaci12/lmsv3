@@ -12,6 +12,7 @@ export interface Student {
   email: string;
   full_name: string;
   birth_date: string;
+  address?: string | null;
   phone?: string | null;
   avatar_url?: string | null;
   is_active: boolean;

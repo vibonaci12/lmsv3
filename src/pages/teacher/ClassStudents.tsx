@@ -13,11 +13,9 @@ import {
   ActionIcon,
   Modal,
   TextInput,
-  SimpleGrid,
-  Paper,
   Avatar,
-  Menu,
-  Alert
+  Alert,
+  Checkbox
 } from '@mantine/core';
 import { DateInput } from '@mantine/dates';
 import { 
@@ -25,25 +23,21 @@ import {
   IconUsers, 
   IconPlus,
   IconSearch,
-  IconDots,
   IconEdit,
   IconTrash,
-  IconMail,
-  IconCalendar,
-  IconUser,
-  IconKey,
   IconUpload,
-  IconDownload
+  IconDownload,
+  IconInfoCircle
 } from '@tabler/icons-react';
 import { useForm } from '@mantine/form';
 import { useAuth } from '../../contexts/AuthContext';
 import { Student } from '../../types';
 import { classService } from '../../services/classService';
 import { studentService } from '../../services/studentService';
-import { studentAuthService } from '../../services/studentAuthService';
-import { LoadingSpinner, EmptyState, ConfirmDialog } from '../../components';
+import { LoadingSpinner, EmptyState, ConfirmDialog, ExcelImport, Pagination, usePagination } from '../../components';
 import { notifications } from '@mantine/notifications';
 import { formatGrade } from '../../utils/romanNumerals';
+import { supabase } from '../../lib/supabase';
 import dayjs from 'dayjs';
 import * as XLSX from 'xlsx';
 
@@ -61,7 +55,21 @@ export function ClassStudents() {
   const [editModalOpen, setEditModalOpen] = useState(false);
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
   const [selectedStudent, setSelectedStudent] = useState<Student | null>(null);
+  const [selectedStudents, setSelectedStudents] = useState<string[]>([]);
   const [importModalOpen, setImportModalOpen] = useState(false);
+  const [bulkDeleteModalOpen, setBulkDeleteModalOpen] = useState(false);
+  const [searchResults, setSearchResults] = useState<Student[]>([]);
+  
+  // Pagination
+  const {
+    currentPage,
+    itemsPerPage,
+    totalItems,
+    paginatedData,
+    handlePageChange,
+    handleItemsPerPageChange,
+    resetPagination
+  } = usePagination(searchResults.length > 0 ? searchResults : students, 10, 1);
 
   const form = useForm({
     initialValues: {
@@ -80,6 +88,20 @@ export function ClassStudents() {
       loadData();
     }
   }, [id]);
+
+  useEffect(() => {
+    // Filter students based on search term
+    if (searchTerm.trim() === '') {
+      setSearchResults([]);
+    } else {
+      const filtered = students.filter(student =>
+        student.full_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        student.email.toLowerCase().includes(searchTerm.toLowerCase())
+      );
+      setSearchResults(filtered);
+    }
+    resetPagination();
+  }, [searchTerm, students]);
 
   const loadData = async () => {
     if (!id) return;
@@ -117,7 +139,8 @@ export function ClassStudents() {
     // Parse DD/MM/YYYY format
     const [day, month, year] = birthDate.split('/');
     const birthYear = year.substring(2); // Get last 2 digits
-    return `${name}${birthYear}${month}@s.school`; // Very short domain
+    const birthDay = day.padStart(2, '0'); // Add leading zero if needed
+    return `${name}${birthYear}${month}${birthDay}@s.school`; // Include day for uniqueness
   };
 
   const generatePassword = (birthDate: string) => {
@@ -150,72 +173,150 @@ export function ClassStudents() {
     });
   };
 
-  const handleImportExcel = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (!file) return;
-
-    const reader = new FileReader();
-    reader.onload = async (e) => {
-      try {
-        const data = new Uint8Array(e.target?.result as ArrayBuffer);
-        const workbook = XLSX.read(data, { type: 'array' });
-        const sheetName = workbook.SheetNames[0];
-        const worksheet = workbook.Sheets[sheetName];
-        const jsonData = XLSX.utils.sheet_to_json(worksheet);
-
-        let successCount = 0;
-        let errorCount = 0;
-
-        for (const row of jsonData as any[]) {
-          try {
-            if (!row['Nama Lengkap'] || !row['Tanggal Lahir']) {
-              errorCount++;
-              continue;
-            }
-
-            const email = generateShortEmail(row['Nama Lengkap'], row['Tanggal Lahir']);
-            const password = generatePassword(row['Tanggal Lahir']);
-            
-            // Convert DD/MM/YYYY to YYYY-MM-DD for database
-            const [day, month, year] = row['Tanggal Lahir'].split('/');
-            const dbDate = `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`;
-            
-            const studentData = {
-              full_name: row['Nama Lengkap'],
-              email: email,
-              birth_date: dbDate,
-              address: row['Alamat'] || '',
-            };
-
-            const newStudent = await studentService.createStudent(studentData, password, teacher.id);
-            await classService.enrollStudent(id!, newStudent.id);
-            successCount++;
-          } catch (error) {
-            console.error('Error importing student:', error);
-            errorCount++;
-          }
-        }
-
-        notifications.show({
-          title: 'Import Selesai',
-          message: `Berhasil mengimpor ${successCount} siswa. ${errorCount} siswa gagal diimpor.`,
-          color: successCount > 0 ? 'green' : 'red',
-        });
-
-        if (successCount > 0) {
-          await loadData();
-        }
-      } catch (error) {
-        notifications.show({
-          title: 'Error',
-          message: 'Gagal membaca file Excel',
-          color: 'red',
-        });
+  const handleDownloadTemplate = () => {
+    // Template data dengan contoh
+    const templateData = [
+      {
+        'Nama Lengkap': 'Ahmad Rizki',
+        'Tanggal Lahir': '15/03/2005',
+        'Alamat': 'Jl. Merdeka No. 123, Jakarta'
+      },
+      {
+        'Nama Lengkap': 'Siti Nurhaliza',
+        'Tanggal Lahir': '22/07/2005',
+        'Alamat': 'Jl. Sudirman No. 456, Bandung'
+      },
+      {
+        'Nama Lengkap': 'Budi Santoso',
+        'Tanggal Lahir': '08/12/2005',
+        'Alamat': 'Jl. Thamrin No. 789, Surabaya'
       }
-    };
+    ];
 
-    reader.readAsArrayBuffer(file);
-    setImportModalOpen(false);
+    const ws = XLSX.utils.json_to_sheet(templateData);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, 'Template Import Siswa');
+
+    XLSX.writeFile(wb, 'template-import-siswa.xlsx');
+
+    notifications.show({
+      title: 'Berhasil',
+      message: 'Template import berhasil diunduh',
+      color: 'green',
+    });
+  };
+
+  const handleImportExcel = async (importData: any[]) => {
+    let successCount = 0;
+    let errorCount = 0;
+    const errors: any[] = [];
+
+    for (let i = 0; i < importData.length; i++) {
+      const row = importData[i];
+      
+      try {
+        // Validate required fields
+        if (!row['Nama Lengkap'] || !row['Tanggal Lahir']) {
+          errors.push({
+            row: i + 1,
+            field: 'Nama Lengkap',
+            message: 'Missing required fields (Nama Lengkap or Tanggal Lahir)'
+          });
+          errorCount++;
+          continue;
+        }
+
+        // Validate date format
+        if (!row['Tanggal Lahir'].includes('/')) {
+          errors.push({
+            row: i + 1,
+            field: 'Tanggal Lahir',
+            message: 'Invalid date format. Expected DD/MM/YYYY'
+          });
+          errorCount++;
+          continue;
+        }
+
+        // Generate unique email
+        let email = generateShortEmail(row['Nama Lengkap'], row['Tanggal Lahir']);
+        let emailCounter = 1;
+        let emailGenerated = false;
+        
+        // Check if email exists and generate unique one
+        while (emailCounter <= 100) {
+          const { data: existingStudent, error: checkError } = await supabase
+            .from('students')
+            .select('id')
+            .eq('email', email)
+            .maybeSingle();
+
+          if (checkError) {
+            console.error(`Error checking existing student:`, checkError);
+            break;
+          }
+
+          if (!existingStudent) {
+            emailGenerated = true;
+            break; // Email is unique
+          }
+
+          // Generate new email with counter
+          const baseEmail = generateShortEmail(row['Nama Lengkap'], row['Tanggal Lahir']);
+          email = baseEmail.replace('@s.school', `${emailCounter}@s.school`);
+          emailCounter++;
+        }
+        
+        if (!emailGenerated) {
+          errors.push({
+            row: i + 1,
+            field: 'email',
+            message: 'Could not generate unique email after 100 attempts'
+          });
+          errorCount++;
+          continue;
+        }
+
+        const password = generatePassword(row['Tanggal Lahir']);
+
+        // Convert DD/MM/YYYY to YYYY-MM-DD for database
+        const [day, month, year] = row['Tanggal Lahir'].split('/');
+        const dbDate = `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`;
+        
+        const studentData = {
+          full_name: row['Nama Lengkap'],
+          email: email,
+          birth_date: dbDate,
+          address: row['Alamat'] || '',
+        };
+
+        const newStudent = await studentService.createStudent(studentData, password, teacher.id);
+        
+        // Enroll student in class
+        await classService.enrollStudent(id!, newStudent.id, teacher.id);
+        
+        successCount++;
+        console.log(`Successfully created student:`, newStudent.full_name);
+
+      } catch (error: any) {
+        console.error(`Error processing row ${i + 1}:`, error);
+        errors.push({
+          row: i + 1,
+          field: 'general',
+          message: error.message
+        });
+        errorCount++;
+      }
+    }
+
+    console.log(`Import completed: ${successCount} success, ${errorCount} errors`);
+    console.log('Errors:', errors);
+
+    if (successCount > 0) {
+      // Reload data
+      await loadData();
+    }
+
+    return { success: successCount, errors };
   };
 
   const handleAddStudent = async (values: typeof form.values) => {
@@ -238,7 +339,7 @@ export function ClassStudents() {
       const newStudent = await studentService.createStudent(studentData, password, teacher.id);
       
       // Enroll student in class
-      await classService.enrollStudent(id!, newStudent.id);
+      await classService.enrollStudent(id!, newStudent.id, teacher.id);
       
       notifications.show({
         title: 'Berhasil',
@@ -262,20 +363,16 @@ export function ClassStudents() {
     if (!selectedStudent) return;
 
     try {
-      const email = generateShortEmail(values.full_name, values.birth_date);
-      
-      // Convert DD/MM/YYYY to YYYY-MM-DD for database
       const [day, month, year] = values.birth_date.split('/');
       const dbDate = `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`;
       
-      const updateData = {
+      const studentData = {
         full_name: values.full_name,
-        email: email,
         birth_date: dbDate,
         address: values.address,
       };
 
-      await studentService.updateStudent(selectedStudent.id, updateData);
+      await studentService.updateStudent(selectedStudent.id, studentData);
       
       notifications.show({
         title: 'Berhasil',
@@ -300,11 +397,7 @@ export function ClassStudents() {
     if (!selectedStudent) return;
 
     try {
-      // Remove from class first
-      await classService.unenrollStudent(id!, selectedStudent.id);
-      
-      // Then delete the student (this will cascade delete all related data)
-      await studentService.deleteStudent(selectedStudent.id, teacher.id);
+      await studentService.deleteStudent(selectedStudent.id);
       
       notifications.show({
         title: 'Berhasil',
@@ -324,24 +417,60 @@ export function ClassStudents() {
     }
   };
 
+  const handleBulkDelete = async () => {
+    try {
+      for (const studentId of selectedStudents) {
+        await studentService.deleteStudent(studentId);
+      }
+      
+      notifications.show({
+        title: 'Berhasil',
+        message: `${selectedStudents.length} siswa berhasil dihapus`,
+        color: 'green',
+      });
+      
+      setBulkDeleteModalOpen(false);
+      setSelectedStudents([]);
+      loadData();
+    } catch (error: any) {
+      notifications.show({
+        title: 'Error',
+        message: error.message || 'Gagal menghapus siswa',
+        color: 'red',
+      });
+    }
+  };
+
+  const handleSelectStudent = (studentId: string, checked: boolean) => {
+    if (checked) {
+      setSelectedStudents([...selectedStudents, studentId]);
+    } else {
+      setSelectedStudents(selectedStudents.filter(id => id !== studentId));
+    }
+  };
+
+  const handleSelectAll = (checked: boolean) => {
+    if (checked) {
+      setSelectedStudents(paginatedData.map(student => student.id));
+    } else {
+      setSelectedStudents([]);
+    }
+  };
+
   const openEditModal = (student: Student) => {
     setSelectedStudent(student);
-    // Convert YYYY-MM-DD to DD/MM/YYYY for display
-    const [year, month, day] = student.birth_date.split('-');
-    const displayDate = `${day}/${month}/${year}`;
-    
     form.setValues({
       full_name: student.full_name,
-      birth_date: displayDate,
+      birth_date: dayjs(student.birth_date).format('DD/MM/YYYY'),
       address: student.address || '',
     });
     setEditModalOpen(true);
   };
 
-  const filteredStudents = students.filter(student =>
-    student.full_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    student.email.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  const openDeleteModal = (student: Student) => {
+    setSelectedStudent(student);
+    setDeleteModalOpen(true);
+  };
 
   if (loading) {
     return <LoadingSpinner message="Memuat data siswa..." />;
@@ -352,250 +481,243 @@ export function ClassStudents() {
       <Container size="xl" py="xl">
         <EmptyState
           icon={IconUsers}
-          title="Kelas tidak ditemukan"
-          description="Kelas yang Anda cari tidak ditemukan"
-          actionLabel="Kembali ke Daftar Kelas"
-          onAction={() => navigate('/teacher/classes')}
+          title="Kelas Tidak Ditemukan"
+          description="Kelas yang Anda cari tidak ditemukan atau tidak memiliki akses."
         />
       </Container>
     );
   }
 
+  const currentStudents = paginatedData;
+
   return (
     <Container size="xl" py="xl">
       <Stack gap="xl">
         {/* Header */}
-        <Group justify="space-between">
-          <Group>
-            <ActionIcon
-              variant="subtle"
-              onClick={() => navigate(`/teacher/classes/${id}`)}
-            >
-              <IconArrowLeft size={16} />
-            </ActionIcon>
-            <div>
-              <Title order={1}>Kelola Siswa</Title>
-              <Text c="dimmed">
-                {classData.name} - {formatGrade(classData.grade)}
-              </Text>
-            </div>
-          </Group>
-          
-          <Group gap="sm">
+        <Group justify="space-between" align="flex-start">
+          <div>
             <Button
               variant="light"
-              leftSection={<IconUpload size={16} />}
-              onClick={() => setImportModalOpen(true)}
+              leftSection={<IconArrowLeft size={16} />}
+              onClick={() => navigate('/teacher/classes')}
+              mb="md"
             >
-              Import Excel
+              Kembali ke Daftar Kelas
             </Button>
-            <Button
-              variant="light"
-              leftSection={<IconDownload size={16} />}
-              onClick={handleExportExcel}
-            >
-              Export Excel
-            </Button>
-            <Button
-              leftSection={<IconPlus size={16} />}
-              onClick={() => setAddModalOpen(true)}
-            >
-              Tambah Siswa
-            </Button>
-          </Group>
+            <Title order={1}>{classData.name}</Title>
+            <Text c="dimmed">Kelas {formatGrade(classData.grade)} • {students.length} Siswa</Text>
+          </div>
         </Group>
 
-        {/* Stats */}
-        <SimpleGrid cols={{ base: 1, sm: 3 }}>
-          <Paper p="md" withBorder>
+        {/* Actions */}
+        <Card withBorder radius="md" p="md">
+          <Group justify="space-between" align="center">
             <Group gap="md">
-              <IconUsers size={32} color="var(--mantine-color-blue-6)" />
-              <div>
-                <Text size="lg" fw={600}>{students.length}</Text>
-                <Text size="sm" c="dimmed">Total Siswa</Text>
-              </div>
+              <TextInput
+                placeholder="Cari siswa..."
+                leftSection={<IconSearch size={16} />}
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                style={{ minWidth: 300 }}
+              />
+              {selectedStudents.length > 0 && (
+                <Group gap="sm">
+                  <Text size="sm" c="dimmed">
+                    {selectedStudents.length} dipilih
+                  </Text>
+                  <Button
+                    variant="light"
+                    color="red"
+                    size="sm"
+                    onClick={() => setBulkDeleteModalOpen(true)}
+                  >
+                    Hapus Terpilih
+                  </Button>
+                </Group>
+              )}
             </Group>
-          </Paper>
-          <Paper p="md" withBorder>
-            <Group gap="md">
-              <IconCalendar size={32} color="var(--mantine-color-green-6)" />
-              <div>
-                <Text size="lg" fw={600}>{classData.class_code}</Text>
-                <Text size="sm" c="dimmed">Kode Kelas</Text>
-              </div>
+            
+            <Group gap="sm">
+              <Button
+                variant="light"
+                leftSection={<IconDownload size={16} />}
+                onClick={handleDownloadTemplate}
+              >
+                Template
+              </Button>
+              <Button
+                variant="light"
+                leftSection={<IconDownload size={16} />}
+                onClick={handleExportExcel}
+              >
+                Export Excel
+              </Button>
+              <Button
+                variant="light"
+                leftSection={<IconUpload size={16} />}
+                onClick={() => setImportModalOpen(true)}
+              >
+                Import Excel
+              </Button>
+              <Button
+                leftSection={<IconPlus size={16} />}
+                onClick={() => setAddModalOpen(true)}
+              >
+                Tambah Siswa
+              </Button>
             </Group>
-          </Paper>
-          <Paper p="md" withBorder>
-            <Group gap="md">
-              <IconUser size={32} color="var(--mantine-color-orange-6)" />
-              <div>
-                <Text size="lg" fw={600}>{formatGrade(classData.grade)}</Text>
-                <Text size="sm" c="dimmed">Tingkat Kelas</Text>
-              </div>
-            </Group>
-          </Paper>
-        </SimpleGrid>
-
-        {/* Search */}
-        <Card withBorder>
-          <Group gap="md">
-            <TextInput
-              placeholder="Cari siswa..."
-              leftSection={<IconSearch size={16} />}
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              style={{ flex: 1 }}
-            />
           </Group>
         </Card>
 
         {/* Students Table */}
-        <Card withBorder>
-          <Stack gap="md">
-            <Group justify="space-between">
-              <Text fw={600}>Daftar Siswa ({filteredStudents.length})</Text>
-            </Group>
-
-            {filteredStudents.length > 0 ? (
-              <div style={{ overflowX: 'auto' }}>
-                <Table style={{ minWidth: 800 }}>
-                  <Table.Thead>
-                    <Table.Tr>
-                      <Table.Th>Siswa</Table.Th>
-                      <Table.Th>Email</Table.Th>
-                      <Table.Th>Tanggal Lahir</Table.Th>
-                      <Table.Th>Alamat</Table.Th>
-                      <Table.Th>Status</Table.Th>
-                      <Table.Th width={100}></Table.Th>
+        {currentStudents.length === 0 ? (
+          <EmptyState
+            icon={IconUsers}
+            title="Tidak Ada Siswa"
+            description={searchTerm ? "Tidak ada siswa yang sesuai dengan pencarian." : "Belum ada siswa yang terdaftar di kelas ini."}
+          />
+        ) : (
+          <Card withBorder radius="md">
+            <div style={{ overflowX: 'auto' }}>
+              <Table striped highlightOnHover>
+                <Table.Thead>
+                  <Table.Tr>
+                    <Table.Th>
+                      <Checkbox
+                        checked={selectedStudents.length === currentStudents.length && currentStudents.length > 0}
+                        indeterminate={selectedStudents.length > 0 && selectedStudents.length < currentStudents.length}
+                        onChange={(event) => handleSelectAll(event.currentTarget.checked)}
+                      />
+                    </Table.Th>
+                    <Table.Th>Siswa</Table.Th>
+                    <Table.Th>Email</Table.Th>
+                    <Table.Th>Tanggal Lahir</Table.Th>
+                    <Table.Th>Status</Table.Th>
+                    <Table.Th>Bergabung</Table.Th>
+                    <Table.Th>Aksi</Table.Th>
+                  </Table.Tr>
+                </Table.Thead>
+                <Table.Tbody>
+                  {currentStudents.map((student) => (
+                    <Table.Tr key={student.id}>
+                      <Table.Td>
+                        <Checkbox
+                          checked={selectedStudents.includes(student.id)}
+                          onChange={(event) => handleSelectStudent(student.id, event.currentTarget.checked)}
+                        />
+                      </Table.Td>
+                      <Table.Td>
+                        <Group gap="sm">
+                          <Avatar size="sm" radius="xl" color="blue">
+                            {student.full_name.charAt(0)}
+                          </Avatar>
+                          <div>
+                            <Text fw={500} size="sm">{student.full_name}</Text>
+                            <Text size="xs" c="dimmed">{student.address || 'Tidak ada alamat'}</Text>
+                          </div>
+                        </Group>
+                      </Table.Td>
+                      <Table.Td>
+                        <Text size="sm">{student.email}</Text>
+                      </Table.Td>
+                      <Table.Td>
+                        <Text size="sm">{dayjs(student.birth_date).format('DD MMM YYYY')}</Text>
+                      </Table.Td>
+                      <Table.Td>
+                        <Badge color={student.is_active ? 'green' : 'red'} variant="light">
+                          {student.is_active ? 'Aktif' : 'Tidak Aktif'}
+                        </Badge>
+                      </Table.Td>
+                      <Table.Td>
+                        <Text size="sm" c="dimmed">
+                          {dayjs(student.created_at).format('DD MMM YYYY')}
+                        </Text>
+                      </Table.Td>
+                      <Table.Td>
+                        <Group gap="xs">
+                          <ActionIcon
+                            variant="light"
+                            color="blue"
+                            onClick={() => openEditModal(student)}
+                          >
+                            <IconEdit size={14} />
+                          </ActionIcon>
+                          <ActionIcon
+                            variant="light"
+                            color="red"
+                            onClick={() => openDeleteModal(student)}
+                          >
+                            <IconTrash size={14} />
+                          </ActionIcon>
+                        </Group>
+                      </Table.Td>
                     </Table.Tr>
-                  </Table.Thead>
-                  <Table.Tbody>
-                    {filteredStudents.map((student) => (
-                      <Table.Tr key={student.id}>
-                        <Table.Td>
-                          <Group gap="sm">
-                            <Avatar size="sm" radius="xl" color="blue">
-                              {student.full_name.charAt(0)}
-                            </Avatar>
-                            <div>
-                              <Text fw={500}>{student.full_name}</Text>
-                              <Text size="sm" c="dimmed">ID: {student.id.substring(0, 8)}...</Text>
-                            </div>
-                          </Group>
-                        </Table.Td>
-                        <Table.Td>
-                          <Group gap="xs">
-                            <IconMail size={14} />
-                            <Text size="sm">{student.email}</Text>
-                          </Group>
-                        </Table.Td>
-                        <Table.Td>
-                          <Text size="sm">
-                            {dayjs(student.birth_date).format('DD/MM/YYYY')}
-                          </Text>
-                        </Table.Td>
-                        <Table.Td>
-                          <Text size="sm">
-                            {student.address || '-'}
-                          </Text>
-                        </Table.Td>
-                        <Table.Td>
-                          <Badge color="green" variant="light" size="sm">
-                            Aktif
-                          </Badge>
-                        </Table.Td>
-                        <Table.Td>
-                          <Menu shadow="md" width={200}>
-                            <Menu.Target>
-                              <ActionIcon variant="subtle" color="gray">
-                                <IconDots size={16} />
-                              </ActionIcon>
-                            </Menu.Target>
-                            <Menu.Dropdown>
-                              <Menu.Item
-                                leftSection={<IconEdit size={14} />}
-                                onClick={() => openEditModal(student)}
-                              >
-                                Edit
-                              </Menu.Item>
-                              <Menu.Divider />
-                              <Menu.Item
-                                color="red"
-                                leftSection={<IconTrash size={14} />}
-                                onClick={() => {
-                                  setSelectedStudent(student);
-                                  setDeleteModalOpen(true);
-                                }}
-                              >
-                                Hapus
-                              </Menu.Item>
-                            </Menu.Dropdown>
-                          </Menu>
-                        </Table.Td>
-                      </Table.Tr>
-                    ))}
-                  </Table.Tbody>
-                </Table>
-              </div>
-            ) : (
-              <EmptyState
-                icon={IconUsers}
-                title="Tidak ada siswa"
-                description={searchTerm ? 
-                  "Tidak ada siswa yang sesuai dengan pencarian" : 
-                  "Belum ada siswa yang terdaftar di kelas ini"
-                }
-                actionLabel="Tambah Siswa"
-                onAction={() => setAddModalOpen(true)}
-              />
-            )}
-          </Stack>
-        </Card>
+                  ))}
+                </Table.Tbody>
+              </Table>
+            </div>
+            
+            {/* Pagination */}
+            <Pagination
+              totalItems={totalItems}
+              itemsPerPage={itemsPerPage}
+              currentPage={currentPage}
+              onPageChange={handlePageChange}
+              onItemsPerPageChange={handleItemsPerPageChange}
+              showItemsPerPage={true}
+              showTotal={true}
+              showPageInput={false}
+              itemsPerPageOptions={[5, 10, 25, 50]}
+            />
+          </Card>
+        )}
 
         {/* Add Student Modal */}
         <Modal
           opened={addModalOpen}
-          onClose={() => setAddModalOpen(false)}
+          onClose={() => {
+            setAddModalOpen(false);
+            form.reset();
+          }}
           title="Tambah Siswa Baru"
-          size="lg"
+          size="md"
         >
           <form onSubmit={form.onSubmit(handleAddStudent)}>
             <Stack gap="md">
-              <Alert color="blue" icon={<IconKey size={16} />}>
-                <Text size="sm">
-                  Email dan password akan digenerate otomatis dari nama dan tanggal lahir siswa.
-                  <br />
-                  <strong>Format Email:</strong> [nama6karakter][tahun][bulan]@s.school
-                  <br />
-                  <strong>Password:</strong> DDMMYYYY (tanggal lahir)
-                </Text>
-              </Alert>
-
               <TextInput
                 label="Nama Lengkap"
-                placeholder="Masukkan nama lengkap siswa"
-                required
+                placeholder="Masukkan nama lengkap"
                 {...form.getInputProps('full_name')}
+                required
               />
-
+              
               <DateInput
                 label="Tanggal Lahir"
                 placeholder="Pilih tanggal lahir"
-                required
                 valueFormat="DD/MM/YYYY"
                 {...form.getInputProps('birth_date')}
+                required
               />
-
+              
               <TextInput
                 label="Alamat"
                 placeholder="Masukkan alamat (opsional)"
                 {...form.getInputProps('address')}
               />
 
+              <Alert icon={<IconInfoCircle size={16} />} color="blue" variant="light">
+                <Text size="sm">
+                  Email dan password akan dibuat otomatis berdasarkan nama dan tanggal lahir.
+                </Text>
+              </Alert>
+
               <Group justify="flex-end" gap="sm">
                 <Button
-                  variant="subtle"
-                  onClick={() => setAddModalOpen(false)}
+                  variant="light"
+                  onClick={() => {
+                    setAddModalOpen(false);
+                    form.reset();
+                  }}
                 >
                   Batal
                 </Button>
@@ -610,34 +732,31 @@ export function ClassStudents() {
         {/* Edit Student Modal */}
         <Modal
           opened={editModalOpen}
-          onClose={() => setEditModalOpen(false)}
+          onClose={() => {
+            setEditModalOpen(false);
+            setSelectedStudent(null);
+            form.reset();
+          }}
           title="Edit Data Siswa"
-          size="lg"
+          size="md"
         >
           <form onSubmit={form.onSubmit(handleEditStudent)}>
             <Stack gap="md">
-              <Alert color="blue" icon={<IconMail size={16} />}>
-                <Text size="sm">
-                  Email akan diperbarui otomatis berdasarkan nama dan tanggal lahir yang baru.
-                </Text>
-              </Alert>
-
               <TextInput
                 label="Nama Lengkap"
-                placeholder="Masukkan nama lengkap siswa"
-                required
+                placeholder="Masukkan nama lengkap"
                 {...form.getInputProps('full_name')}
+                required
               />
-
+              
               <DateInput
                 label="Tanggal Lahir"
                 placeholder="Pilih tanggal lahir"
-                required
                 valueFormat="DD/MM/YYYY"
                 {...form.getInputProps('birth_date')}
+                required
               />
-
-
+              
               <TextInput
                 label="Alamat"
                 placeholder="Masukkan alamat (opsional)"
@@ -646,8 +765,12 @@ export function ClassStudents() {
 
               <Group justify="flex-end" gap="sm">
                 <Button
-                  variant="subtle"
-                  onClick={() => setEditModalOpen(false)}
+                  variant="light"
+                  onClick={() => {
+                    setEditModalOpen(false);
+                    setSelectedStudent(null);
+                    form.reset();
+                  }}
                 >
                   Batal
                 </Button>
@@ -659,66 +782,50 @@ export function ClassStudents() {
           </form>
         </Modal>
 
-        {/* Import Excel Modal */}
-        <Modal
-          opened={importModalOpen}
-          onClose={() => setImportModalOpen(false)}
-          title="Import Data Siswa dari Excel"
-          size="md"
-        >
-          <Stack gap="md">
-            <Alert color="blue" icon={<IconKey size={16} />}>
-              <Text size="sm">
-                <strong>Format Excel yang diperlukan:</strong>
-                <br />
-                • Kolom A: Nama Lengkap
-                <br />
-                • Kolom B: Tanggal Lahir (format: DD/MM/YYYY)
-                <br />
-                • Kolom C: Alamat (opsional)
-                <br />
-                <br />
-                Email dan password akan digenerate otomatis.
-              </Text>
-            </Alert>
-
-            <input
-              type="file"
-              accept=".xlsx,.xls"
-              onChange={handleImportExcel}
-              style={{ display: 'none' }}
-              id="excel-import"
-            />
-            
-            <Button
-              leftSection={<IconUpload size={16} />}
-              onClick={() => document.getElementById('excel-import')?.click()}
-              fullWidth
-            >
-              Pilih File Excel
-            </Button>
-
-            <Group justify="flex-end" gap="sm">
-              <Button
-                variant="subtle"
-                onClick={() => setImportModalOpen(false)}
-              >
-                Batal
-              </Button>
-            </Group>
-          </Stack>
-        </Modal>
-
         {/* Delete Confirmation Modal */}
         <ConfirmDialog
           opened={deleteModalOpen}
-          onClose={() => setDeleteModalOpen(false)}
+          onClose={() => {
+            setDeleteModalOpen(false);
+            setSelectedStudent(null);
+          }}
           onConfirm={handleDeleteStudent}
           title="Hapus Siswa"
-          message={`Apakah Anda yakin ingin menghapus ${selectedStudent?.full_name}? Tindakan ini akan menghapus semua data siswa termasuk submission dan nilai.`}
+          message={`Apakah Anda yakin ingin menghapus siswa "${selectedStudent?.full_name}"? Tindakan ini tidak dapat dibatalkan.`}
           confirmLabel="Hapus"
           cancelLabel="Batal"
           confirmColor="red"
+        />
+
+        {/* Bulk Delete Confirmation Modal */}
+        <ConfirmDialog
+          opened={bulkDeleteModalOpen}
+          onClose={() => {
+            setBulkDeleteModalOpen(false);
+            setSelectedStudents([]);
+          }}
+          onConfirm={handleBulkDelete}
+          title="Hapus Siswa Terpilih"
+          message={`Apakah Anda yakin ingin menghapus ${selectedStudents.length} siswa yang dipilih? Tindakan ini tidak dapat dibatalkan.`}
+          confirmLabel="Hapus Semua"
+          cancelLabel="Batal"
+          confirmColor="red"
+        />
+
+        {/* Excel Import Modal */}
+        <ExcelImport
+          opened={importModalOpen}
+          onClose={() => setImportModalOpen(false)}
+          onImport={handleImportExcel}
+          title="Import Siswa dari Excel"
+          requiredColumns={['Nama Lengkap', 'Tanggal Lahir']}
+          columnMappings={{
+            'Nama Lengkap': 'nama_lengkap',
+            'Tanggal Lahir': 'tanggal_lahir',
+            'Alamat': 'alamat'
+          }}
+          previewColumns={['Nama Lengkap', 'Tanggal Lahir', 'Alamat']}
+          maxRows={100}
         />
       </Stack>
     </Container>

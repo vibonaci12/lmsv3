@@ -4,6 +4,9 @@ export { EmptyState } from './EmptyState';
 export { ProtectedRoute } from './ProtectedRoute';
 export { ConfirmDialog } from './common/ConfirmDialog';
 export { FileUpload } from './common/FileUpload';
+export { ExcelImport } from './common/ExcelImport';
+export { Pagination, usePagination } from './common/Pagination';
+export { BottomNavigation } from './BottomNavigation';
 
 // Card components
 export { ClassCard } from './cards/ClassCard';
