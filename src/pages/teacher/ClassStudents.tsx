@@ -15,9 +15,10 @@ import {
   TextInput,
   Avatar,
   Alert,
-  Checkbox
+  Checkbox,
+  PasswordInput,
+  Tabs
 } from '@mantine/core';
-import { DateInput } from '@mantine/dates';
 import { 
   IconArrowLeft,
   IconUsers, 
@@ -59,6 +60,7 @@ export function ClassStudents() {
   const [importModalOpen, setImportModalOpen] = useState(false);
   const [bulkDeleteModalOpen, setBulkDeleteModalOpen] = useState(false);
   const [searchResults, setSearchResults] = useState<Student[]>([]);
+  const [passwordLoading, setPasswordLoading] = useState(false);
   
   // Pagination
   const {
@@ -79,7 +81,32 @@ export function ClassStudents() {
     },
     validate: {
       full_name: (value) => (!value ? 'Nama lengkap harus diisi' : null),
-      birth_date: (value) => (!value ? 'Tanggal lahir harus diisi' : null),
+      birth_date: (value) => {
+        if (!value) return 'Tanggal lahir harus diisi';
+        const dateRegex = /^(\d{2})\/(\d{2})\/(\d{4})$/;
+        if (!dateRegex.test(value)) return 'Format tanggal harus DD/MM/YYYY';
+        const [, day, month, year] = value.match(dateRegex)!;
+        const date = new Date(parseInt(year), parseInt(month) - 1, parseInt(day));
+        if (isNaN(date.getTime())) return 'Tanggal tidak valid';
+        return null;
+      },
+    },
+  });
+
+  const passwordForm = useForm({
+    initialValues: {
+      new_password: '',
+      confirm_password: '',
+    },
+    validate: {
+      new_password: (value) => {
+        if (!value) return 'Password baru harus diisi';
+        if (value.length < 6) return 'Password minimal 6 karakter';
+        if (value.length > 50) return 'Password maksimal 50 karakter';
+        return null;
+      },
+      confirm_password: (value, values) => 
+        value !== values.new_password ? 'Konfirmasi password tidak sama' : null,
     },
   });
 
@@ -372,7 +399,7 @@ export function ClassStudents() {
         address: values.address,
       };
 
-      await studentService.updateStudent(selectedStudent.id, studentData);
+      await studentService.updateStudent(selectedStudent.id, studentData, teacher.id);
       
       notifications.show({
         title: 'Berhasil',
@@ -390,6 +417,31 @@ export function ClassStudents() {
         message: error.message || 'Gagal memperbarui data siswa',
         color: 'red',
       });
+    }
+  };
+
+  const handleChangePassword = async (values: typeof passwordForm.values) => {
+    if (!selectedStudent) return;
+
+    setPasswordLoading(true);
+    try {
+      await studentService.updatePassword(selectedStudent.id, values.new_password, teacher.id);
+      
+      notifications.show({
+        title: 'Berhasil',
+        message: 'Password siswa berhasil diubah',
+        color: 'green',
+      });
+      
+      passwordForm.reset();
+    } catch (error: any) {
+      notifications.show({
+        title: 'Error',
+        message: error.message || 'Gagal mengubah password siswa',
+        color: 'red',
+      });
+    } finally {
+      setPasswordLoading(false);
     }
   };
 
@@ -464,6 +516,7 @@ export function ClassStudents() {
       birth_date: dayjs(student.birth_date).format('DD/MM/YYYY'),
       address: student.address || '',
     });
+    passwordForm.reset();
     setEditModalOpen(true);
   };
 
@@ -691,10 +744,9 @@ export function ClassStudents() {
                 required
               />
               
-              <DateInput
+              <TextInput
                 label="Tanggal Lahir"
-                placeholder="Pilih tanggal lahir"
-                valueFormat="DD/MM/YYYY"
+                placeholder="DD/MM/YYYY (contoh: 15/03/2005)"
                 {...form.getInputProps('birth_date')}
                 required
               />
@@ -736,50 +788,115 @@ export function ClassStudents() {
             setEditModalOpen(false);
             setSelectedStudent(null);
             form.reset();
+            passwordForm.reset();
           }}
-          title="Edit Data Siswa"
-          size="md"
+          title={`Edit Data Siswa - ${selectedStudent?.full_name}`}
+          size="lg"
         >
-          <form onSubmit={form.onSubmit(handleEditStudent)}>
-            <Stack gap="md">
-              <TextInput
-                label="Nama Lengkap"
-                placeholder="Masukkan nama lengkap"
-                {...form.getInputProps('full_name')}
-                required
-              />
-              
-              <DateInput
-                label="Tanggal Lahir"
-                placeholder="Pilih tanggal lahir"
-                valueFormat="DD/MM/YYYY"
-                {...form.getInputProps('birth_date')}
-                required
-              />
-              
-              <TextInput
-                label="Alamat"
-                placeholder="Masukkan alamat (opsional)"
-                {...form.getInputProps('address')}
-              />
+          <Tabs defaultValue="profile">
+            <Tabs.List>
+              <Tabs.Tab value="profile">Data Profil</Tabs.Tab>
+              <Tabs.Tab value="password">Ubah Password</Tabs.Tab>
+            </Tabs.List>
 
-              <Group justify="flex-end" gap="sm">
-                <Button
-                  variant="light"
-                  onClick={() => {
-                    setEditModalOpen(false);
-                    setSelectedStudent(null);
-                    form.reset();
-                  }}
-                >
-                  Batal
-                </Button>
-                <Button type="submit">
-                  Simpan Perubahan
-                </Button>
-              </Group>
-            </Stack>
-          </form>
+            <Tabs.Panel value="profile" pt="md">
+              <form onSubmit={form.onSubmit(handleEditStudent)}>
+                <Stack gap="md">
+                  <TextInput
+                    label="Nama Lengkap"
+                    placeholder="Masukkan nama lengkap"
+                    {...form.getInputProps('full_name')}
+                    required
+                  />
+                  
+                  <TextInput
+                    label="Tanggal Lahir"
+                    placeholder="DD/MM/YYYY (contoh: 15/03/2005)"
+                    {...form.getInputProps('birth_date')}
+                    required
+                  />
+                  
+                  <TextInput
+                    label="Alamat"
+                    placeholder="Masukkan alamat (opsional)"
+                    {...form.getInputProps('address')}
+                  />
+
+                  <Alert icon={<IconInfoCircle size={16} />} color="blue" variant="light">
+                    <Text size="sm">
+                      Email: <strong>{selectedStudent?.email}</strong>
+                    </Text>
+                  </Alert>
+
+                  <Group justify="flex-end" gap="sm">
+                    <Button
+                      variant="light"
+                      onClick={() => {
+                        setEditModalOpen(false);
+                        setSelectedStudent(null);
+                        form.reset();
+                        passwordForm.reset();
+                      }}
+                    >
+                      Batal
+                    </Button>
+                    <Button type="submit">
+                      Simpan Perubahan
+                    </Button>
+                  </Group>
+                </Stack>
+              </form>
+            </Tabs.Panel>
+
+            <Tabs.Panel value="password" pt="md">
+              <form onSubmit={passwordForm.onSubmit(handleChangePassword)}>
+                <Stack gap="md">
+                  <Alert icon={<IconInfoCircle size={16} />} color="blue" variant="light">
+                    <Text size="sm">
+                      <strong>Aturan Password Baru:</strong>
+                      <br />
+                      • Minimal 6 karakter, maksimal 50 karakter
+                      <br />
+                      • Boleh menggunakan huruf, angka, dan simbol
+                      <br />
+                      • Pastikan password mudah diingat namun sulit ditebak
+                    </Text>
+                  </Alert>
+
+                  <PasswordInput
+                    label="Password Baru"
+                    placeholder="Masukkan password baru (min. 6 karakter)"
+                    required
+                    {...passwordForm.getInputProps('new_password')}
+                  />
+
+                  <PasswordInput
+                    label="Konfirmasi Password Baru"
+                    placeholder="Ulangi password baru"
+                    required
+                    {...passwordForm.getInputProps('confirm_password')}
+                  />
+
+                  <Group justify="flex-end" gap="sm">
+                    <Button
+                      variant="light"
+                      onClick={() => {
+                        setEditModalOpen(false);
+                        setSelectedStudent(null);
+                        form.reset();
+                        passwordForm.reset();
+                      }}
+                    >
+                      Batal
+                    </Button>
+                    <Button type="submit" loading={passwordLoading} color="orange">
+                      Ubah Password
+                    </Button>
+                  </Group>
+                </Stack>
+              </form>
+            </Tabs.Panel>
+          </Tabs>
         </Modal>
 
         {/* Delete Confirmation Modal */}

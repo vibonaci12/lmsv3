@@ -113,6 +113,31 @@ export const studentService = {
     return data;
   },
 
+  async updatePassword(studentId: string, newPassword: string, updatedBy: string) {
+    // Use studentAuthService to update password
+    await studentAuthService.updatePassword(studentId, newPassword);
+
+    // Get student info for logging
+    const { data: student, error: fetchError } = await supabase
+      .from('students')
+      .select('full_name')
+      .eq('id', studentId)
+      .single();
+
+    if (fetchError) throw fetchError;
+
+    // Log the password update
+    await supabase.from('activity_logs').insert({
+      teacher_id: updatedBy,
+      action: 'update_password',
+      entity_type: 'student',
+      entity_id: studentId,
+      description: `Updated password for student ${student.full_name}`,
+    });
+
+    return { success: true };
+  },
+
   async deactivateStudent(studentId: string, deactivatedBy: string) {
     const { data, error } = await supabase
       .from('students')
