@@ -22,15 +22,18 @@ import {
   IconAlertCircle
 } from '@tabler/icons-react';
 import { useForm } from '@mantine/form';
-import { useAuth } from '../../contexts/AuthContext';
+import { useStudentAuth } from '../../contexts/StudentAuthContext';
 import { studentAuthService } from '../../services/studentAuthService';
 import { LoadingSpinner } from '../../components';
 import { notifications } from '@mantine/notifications';
 import dayjs from 'dayjs';
 
 export function StudentProfile() {
-  const { user } = useAuth();
-  const student = user!;
+  const { student } = useStudentAuth();
+  
+  if (!student) {
+    return <LoadingSpinner message="Memuat profil..." />;
+  }
   
   const [loading, setLoading] = useState(false);
   const [passwordLoading, setPasswordLoading] = useState(false);
@@ -57,7 +60,12 @@ export function StudentProfile() {
     },
     validate: {
       current_password: (value) => (!value ? 'Password lama harus diisi' : null),
-      new_password: (value) => (!value ? 'Password baru harus diisi' : null),
+      new_password: (value) => {
+        if (!value) return 'Password baru harus diisi';
+        if (value.length < 6) return 'Password minimal 6 karakter';
+        if (value.length > 50) return 'Password maksimal 50 karakter';
+        return null;
+      },
       confirm_password: (value, values) => 
         value !== values.new_password ? 'Konfirmasi password tidak sama' : null,
     },
@@ -97,18 +105,14 @@ export function StudentProfile() {
     setPasswordLoading(true);
     try {
       // Verify current password first
-      const currentPasswordFormatted = values.current_password.replace(/\//g, '');
-      
-      // Try to login with current password to verify
       try {
-        await studentAuthService.loginStudent(student.email, currentPasswordFormatted);
+        await studentAuthService.loginStudent(student.email, values.current_password);
       } catch (error) {
         throw new Error('Password lama tidak benar');
       }
 
-      // Update password
-      const newPasswordFormatted = values.new_password.replace(/\//g, '');
-      await studentAuthService.resetPassword(student.id, newPasswordFormatted);
+      // Update password with new flexible password
+      await studentAuthService.updatePassword(student.id, values.new_password);
 
       notifications.show({
         title: 'Berhasil',
@@ -210,9 +214,13 @@ export function StudentProfile() {
             
             <Alert color="blue" icon={<IconKey size={16} />}>
               <Text size="sm">
-                Password harus dalam format DDMMYYYY (tanggal lahir tanpa slash).
+                <strong>Aturan Password Baru:</strong>
                 <br />
-                Contoh: 15032005 untuk tanggal lahir 15/03/2005
+                • Minimal 6 karakter, maksimal 50 karakter
+                <br />
+                • Boleh menggunakan huruf, angka, dan simbol
+                <br />
+                • Pastikan password mudah diingat namun sulit ditebak
               </Text>
             </Alert>
             
@@ -228,7 +236,7 @@ export function StudentProfile() {
 
                 <PasswordInput
                   label="Password Baru"
-                  placeholder="DDMMYYYY (contoh: 15032005)"
+                  placeholder="Masukkan password baru (min. 6 karakter)"
                   required
                   leftSection={<IconKey size={16} />}
                   {...passwordForm.getInputProps('new_password')}

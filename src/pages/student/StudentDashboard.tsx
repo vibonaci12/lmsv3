@@ -23,8 +23,7 @@ import {
   IconX
 } from '@tabler/icons-react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
-import { useAuth } from '../../contexts/AuthContext';
-import { Student } from '../../types';
+import { useStudentAuth } from '../../contexts/StudentAuthContext';
 import { submissionService } from '../../services/submissionService';
 import { notificationService } from '../../services/notificationService';
 import { LoadingSpinner, EmptyState } from '../../components';
@@ -49,9 +48,12 @@ interface PendingAssignment {
 }
 
 export function StudentDashboard() {
-  const { user } = useAuth();
+  const { student, loading: authLoading } = useStudentAuth();
   const navigate = useNavigate();
-  const student = user as Student;
+  
+  if (authLoading || !student) {
+    return <LoadingSpinner message="Memuat dashboard..." />;
+  }
   
   const [loading, setLoading] = useState(true);
   const [stats, setStats] = useState<StudentStats>({

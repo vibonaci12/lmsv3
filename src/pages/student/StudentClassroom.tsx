@@ -37,7 +37,7 @@ import {
   IconUpload,
   IconEye,
 } from '@tabler/icons-react';
-import { useAuth } from '../../contexts/AuthContext';
+import { useStudentAuth } from '../../contexts/StudentAuthContext';
 import { LoadingSpinner, EmptyState, Pagination, usePagination } from '../../components';
 import { notifications } from '@mantine/notifications';
 import { formatGrade } from '../../utils/romanNumerals';
@@ -131,13 +131,11 @@ interface Assignment {
 }
 
 export function StudentClassroom() {
-  const { user, loading: authLoading } = useAuth();
+  const { student, loading: authLoading } = useStudentAuth();
   
-  if (authLoading || !user) {
+  if (authLoading || !student) {
     return <LoadingSpinner message="Memuat data kelas..." />;
   }
-  
-  const student = user;
   
   const [loading, setLoading] = useState(true);
   const [classes, setClasses] = useState<ClassInfo[]>([]);

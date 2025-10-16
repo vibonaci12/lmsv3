@@ -208,7 +208,7 @@ export function BottomNavigation({ role }: BottomNavigationProps) {
                   justifyContent: 'center'
                 }}
                 animate={{
-                  color: isActive ? 'white' : '#6b7280',
+                  color: isActive ? '#ffffff' : '#6b7280',
                   scale: isActive ? 1.2 : 1,
                   rotate: isActive ? [0, -10, 10, 0] : 0,
                 }}
@@ -235,7 +235,7 @@ export function BottomNavigation({ role }: BottomNavigationProps) {
                   marginTop: '4px'
                 }}
                 animate={{
-                  color: isActive ? 'white' : '#6b7280',
+                  color: isActive ? '#ffffff' : '#6b7280',
                   opacity: isActive ? 1 : 0.6,
                   y: isActive ? 0 : 2,
                 }}

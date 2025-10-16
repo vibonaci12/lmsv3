@@ -12,53 +12,47 @@ import {
   Tabs,
   Alert,
   Group,
+  Anchor,
+  Divider,
 } from '@mantine/core';
-import { useAuth } from '../../contexts/AuthContext';
+import { useUnifiedAuth } from '../../contexts/UnifiedAuthContext';
 import { GraduationCap, BookOpen, AlertCircle } from 'lucide-react';
 
 export function UnifiedLogin() {
   const navigate = useNavigate();
-  const { loginTeacher, loginStudent } = useAuth();
+  const { loginTeacher, loginStudent, loading } = useUnifiedAuth();
   
   // Teacher login state
   const [teacherEmail, setTeacherEmail] = useState('');
   const [teacherPassword, setTeacherPassword] = useState('');
-  const [teacherLoading, setTeacherLoading] = useState(false);
   const [teacherError, setTeacherError] = useState('');
   
   // Student login state
   const [studentEmail, setStudentEmail] = useState('');
   const [studentPassword, setStudentPassword] = useState('');
-  const [studentLoading, setStudentLoading] = useState(false);
   const [studentError, setStudentError] = useState('');
 
   async function handleTeacherLogin(e: React.FormEvent) {
     e.preventDefault();
     setTeacherError('');
-    setTeacherLoading(true);
 
     try {
       await loginTeacher(teacherEmail, teacherPassword);
       navigate('/teacher/dashboard');
     } catch (err: any) {
       setTeacherError(err.message || 'Gagal login sebagai guru');
-    } finally {
-      setTeacherLoading(false);
     }
   }
 
   async function handleStudentLogin(e: React.FormEvent) {
     e.preventDefault();
     setStudentError('');
-    setStudentLoading(true);
 
     try {
       await loginStudent(studentEmail, studentPassword);
       navigate('/student/dashboard');
     } catch (err: any) {
       setStudentError(err.message || 'Gagal login sebagai siswa');
-    } finally {
-      setStudentLoading(false);
     }
   }
 
@@ -113,7 +107,7 @@ export function UnifiedLogin() {
                     onChange={(e) => setTeacherPassword(e.target.value)}
                   />
 
-                  <Button type="submit" fullWidth loading={teacherLoading}>
+                  <Button type="submit" fullWidth loading={loading}>
                     Login sebagai Guru
                   </Button>
                 </Stack>
@@ -145,7 +139,7 @@ export function UnifiedLogin() {
                     onChange={(e) => setStudentPassword(e.target.value)}
                   />
 
-                  <Button type="submit" fullWidth loading={studentLoading}>
+                  <Button type="submit" fullWidth loading={loading}>
                     Login sebagai Siswa
                   </Button>
                 </Stack>
@@ -153,6 +147,15 @@ export function UnifiedLogin() {
             </Tabs.Panel>
           </Tabs>
 
+          {/* Help text */}
+          <Paper p="md" bg="gray.0" radius="md">
+            <Text size="xs" c="dimmed" ta="center">
+              <strong>Bantuan Login:</strong><br />
+              • <strong>Guru:</strong> Gunakan email dan password yang telah didaftarkan<br />
+              • <strong>Siswa:</strong> Gunakan email yang telah didaftarkan oleh guru, password default adalah tanggal lahir (DDMMYYYY)<br />
+              • Jika mengalami masalah, hubungi administrator sistem
+            </Text>
+          </Paper>
         </Paper>
       </Stack>
     </Container>

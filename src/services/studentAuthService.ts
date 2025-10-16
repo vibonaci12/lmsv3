@@ -81,4 +81,15 @@ export const studentAuthService = {
 
     if (error) throw error;
   },
+
+  async updatePassword(studentId: string, newPassword: string): Promise<void> {
+    const passwordHash = await bcrypt.hash(newPassword, 10);
+
+    const { error } = await supabase
+      .from('students')
+      .update({ password_hash: passwordHash })
+      .eq('id', studentId);
+
+    if (error) throw error;
+  },
 };

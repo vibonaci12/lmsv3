@@ -34,7 +34,7 @@ import {
   IconTarget,
   IconStar
 } from '@tabler/icons-react';
-import { useAuth } from '../../contexts/AuthContext';
+import { useStudentAuth } from '../../contexts/StudentAuthContext';
 import { LoadingSpinner, EmptyState } from '../../components';
 import { notifications } from '@mantine/notifications';
 import { formatGrade } from '../../utils/romanNumerals';
@@ -66,13 +66,11 @@ interface PersonalStats {
 }
 
 export function StudentLeaderboard() {
-  const { user, loading: authLoading } = useAuth();
+  const { student, loading: authLoading } = useStudentAuth();
   
-  if (authLoading || !user) {
+  if (authLoading || !student) {
     return <LoadingSpinner message="Memuat data leaderboard..." />;
   }
-  
-  const student = user;
   
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -484,7 +482,7 @@ export function StudentLeaderboard() {
 
             <ScrollArea h={500}>
               <div style={{ overflowX: 'auto' }}>
-                <Table minWidth={800}>
+                <Table style={{ minWidth: 800 }}>
                   <Table.Thead>
                     <Table.Tr>
                       <Table.Th width={80}>Peringkat</Table.Th>

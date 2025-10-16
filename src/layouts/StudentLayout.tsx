@@ -1,8 +1,7 @@
 import { AppShell, Group, Text, Avatar, Menu, Button, NavLink, Burger } from '@mantine/core';
 import { useDisclosure } from '@mantine/hooks';
 import { Outlet, useNavigate, useLocation } from 'react-router-dom';
-import { useAuth } from '../contexts/AuthContext';
-import { Student } from '../types';
+import { useStudentAuth } from '../contexts/StudentAuthContext';
 import { BottomNavigation } from '../components';
 import { useResponsive } from '../hooks/useResponsive';
 import {
@@ -17,13 +16,12 @@ export function StudentLayout() {
   const [opened, { toggle }] = useDisclosure();
   const navigate = useNavigate();
   const location = useLocation();
-  const { user, logout } = useAuth();
+  const { student, logoutStudent } = useStudentAuth();
   const { isMobile } = useResponsive();
-  const student = user as Student;
 
-  const handleLogout = async () => {
-    await logout();
-    navigate('/');
+  const handleLogout = () => {
+    logoutStudent();
+    navigate('/login-siswa');
   };
 
   const navItems = [
@@ -31,6 +29,25 @@ export function StudentLayout() {
     { icon: BookOpen, label: 'Kelas & Tugas', path: '/student/classroom' },
     { icon: Trophy, label: 'Leaderboard', path: '/student/leaderboard' },
   ];
+
+  // Show loading or error if student data is not available
+  if (!student) {
+    return (
+      <AppShell
+        header={{ height: 60 }}
+        padding="md"
+      >
+        <AppShell.Header>
+          <Group h="100%" px="md" justify="space-between">
+            <Text size="lg" fw={700}>LMS - Siswa</Text>
+          </Group>
+        </AppShell.Header>
+        <AppShell.Main>
+          <div>Loading...</div>
+        </AppShell.Main>
+      </AppShell>
+    );
+  }
 
   return (
     <AppShell

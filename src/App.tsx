@@ -2,7 +2,9 @@ import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { MantineProvider } from '@mantine/core';
 import { Notifications } from '@mantine/notifications';
 import { AuthProvider } from './contexts/AuthContext';
-import { ProtectedRoute } from './components/ProtectedRoute';
+import { StudentAuthProvider } from './contexts/StudentAuthContext';
+import { UnifiedAuthProvider } from './contexts/UnifiedAuthContext';
+import { TeacherProtectedRoute, StudentProtectedRoute } from './components/UnifiedProtectedRoute';
 import { TeacherLayout } from './layouts/TeacherLayout';
 import { StudentLayout } from './layouts/StudentLayout';
 
@@ -32,47 +34,57 @@ function App() {
       <Notifications position="top-right" />
       <BrowserRouter>
         <AuthProvider>
-          <Routes>
-            <Route path="/" element={<UnifiedLogin />} />
+          <StudentAuthProvider>
+            <UnifiedAuthProvider>
+              <Routes>
+                {/* Main login page - unified for both teacher and student */}
+                <Route path="/" element={<UnifiedLogin />} />
+                <Route path="/login" element={<UnifiedLogin />} />
+                <Route path="/login-siswa" element={<UnifiedLogin />} />
 
-            <Route
-              path="/teacher/*"
-              element={
-                <ProtectedRoute allowedRole="teacher">
-                  <TeacherLayout />
-                </ProtectedRoute>
-              }
-            >
-              <Route path="dashboard" element={<TeacherDashboard />} />
-              <Route path="classes" element={<ClassList />} />
-              <Route path="classes/:id" element={<ClassDetail />} />
-              <Route path="classes/:id/students" element={<ClassStudents />} />
-              <Route path="classes/:id/assignments" element={<ClassAssignments />} />
-              <Route path="classes/:id/attendance" element={<ClassAttendance />} />
-              <Route path="assignments" element={<AssignmentList />} />
-              <Route path="assignments/:id" element={<AssignmentDetail />} />
-              <Route path="leaderboard" element={<Leaderboard />} />
-              <Route path="profile" element={<div>Profile Page</div>} />
-              <Route index element={<Navigate to="/teacher/dashboard" replace />} />
-            </Route>
+                {/* Teacher routes - using Supabase Auth */}
+                <Route
+                  path="/teacher/*"
+                  element={
+                    <TeacherProtectedRoute>
+                      <TeacherLayout />
+                    </TeacherProtectedRoute>
+                  }
+                >
+                  <Route path="dashboard" element={<TeacherDashboard />} />
+                  <Route path="classes" element={<ClassList />} />
+                  <Route path="classes/:id" element={<ClassDetail />} />
+                  <Route path="classes/:id/students" element={<ClassStudents />} />
+                  <Route path="classes/:id/assignments" element={<ClassAssignments />} />
+                  <Route path="classes/:id/attendance" element={<ClassAttendance />} />
+                  <Route path="assignments" element={<AssignmentList />} />
+                  <Route path="assignments/:id" element={<AssignmentDetail />} />
+                  <Route path="leaderboard" element={<Leaderboard />} />
+                  <Route path="profile" element={<div>Profile Page</div>} />
+                  <Route index element={<Navigate to="/teacher/dashboard" replace />} />
+                </Route>
 
-            <Route
-              path="/student/*"
-              element={
-                <ProtectedRoute allowedRole="student">
-                  <StudentLayout />
-                </ProtectedRoute>
-              }
-            >
-              <Route path="dashboard" element={<StudentDashboard />} />
-              <Route path="classroom" element={<StudentClassroom />} />
-              <Route path="leaderboard" element={<StudentLeaderboard />} />
-              <Route path="profile" element={<StudentProfile />} />
-              <Route index element={<Navigate to="/student/dashboard" replace />} />
-            </Route>
+                {/* Student routes - using custom auth */}
+                <Route
+                  path="/student/*"
+                  element={
+                    <StudentProtectedRoute>
+                      <StudentLayout />
+                    </StudentProtectedRoute>
+                  }
+                >
+                  <Route path="dashboard" element={<StudentDashboard />} />
+                  <Route path="classroom" element={<StudentClassroom />} />
+                  <Route path="leaderboard" element={<StudentLeaderboard />} />
+                  <Route path="profile" element={<StudentProfile />} />
+                  <Route index element={<Navigate to="/student/dashboard" replace />} />
+                </Route>
 
-            <Route path="*" element={<Navigate to="/" replace />} />
-          </Routes>
+                {/* Catch all route */}
+                <Route path="*" element={<Navigate to="/" replace />} />
+              </Routes>
+            </UnifiedAuthProvider>
+          </StudentAuthProvider>
         </AuthProvider>
       </BrowserRouter>
     </MantineProvider>
