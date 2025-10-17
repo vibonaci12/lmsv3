@@ -13,7 +13,8 @@ import {
   SimpleGrid,
   Paper,
   Table,
-  Progress
+  Progress,
+  Select
 } from '@mantine/core';
 import { 
   IconArrowLeft,
@@ -31,7 +32,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import { Assignment, Submission } from '../../types';
 import { assignmentService } from '../../services/assignmentService';
 import { submissionService } from '../../services/submissionService';
-import { LoadingSpinner, EmptyState, ConfirmDialog } from '../../components';
+import { LoadingSpinner, EmptyState, ConfirmDialog, Pagination } from '../../components';
 import { notifications } from '@mantine/notifications';
 // import { formatGrade } from '../../utils/romanNumerals';
 import dayjs from 'dayjs';
@@ -46,6 +47,9 @@ export function AssignmentDetail() {
   const [assignment, setAssignment] = useState<Assignment | null>(null);
   const [submissions, setSubmissions] = useState<Submission[]>([]);
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage, setItemsPerPage] = useState(10);
+  const [submissionFilter, setSubmissionFilter] = useState<'all' | 'submitted' | 'not_submitted'>('all');
 
   useEffect(() => {
     if (id) {
@@ -60,7 +64,7 @@ export function AssignmentDetail() {
       setLoading(true);
       const [assignmentData, submissionsData] = await Promise.all([
         assignmentService.getAssignmentById(id),
-        submissionService.getStudentSubmissions(id)
+        submissionService.getAssignmentSubmissions(id)
       ]);
 
       setAssignment(assignmentData);
@@ -124,6 +128,31 @@ export function AssignmentDetail() {
   };
 
   const stats = getSubmissionStats();
+
+  // Filter submissions
+  const filteredSubmissions = submissions.filter(submission => {
+    if (submissionFilter === 'submitted') {
+      return submission.status === 'submitted' || submission.status === 'graded';
+    } else if (submissionFilter === 'not_submitted') {
+      return submission.status === 'pending';
+    }
+    return true; // 'all'
+  });
+
+  // Pagination logic
+  const totalSubmissions = filteredSubmissions.length;
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const endIndex = startIndex + itemsPerPage;
+  const paginatedSubmissions = filteredSubmissions.slice(startIndex, endIndex);
+
+  const handlePageChange = (page: number) => {
+    setCurrentPage(page);
+  };
+
+  const handleItemsPerPageChange = (newItemsPerPage: number) => {
+    setItemsPerPage(newItemsPerPage);
+    setCurrentPage(1);
+  };
 
   if (loading) {
     return <LoadingSpinner message="Memuat data tugas..." />;
@@ -339,35 +368,75 @@ export function AssignmentDetail() {
             </Group>
 
             {submissions.length > 0 ? (
-              <Table>
-                <Table.Thead>
-                  <Table.Tr>
-                    <Table.Th>Siswa</Table.Th>
-                    <Table.Th>Status</Table.Th>
-                    <Table.Th>Waktu Submit</Table.Th>
-                    <Table.Th>Nilai</Table.Th>
-                    <Table.Th>Feedback</Table.Th>
-                    <Table.Th style={{ width: 100 }}></Table.Th>
-                  </Table.Tr>
-                </Table.Thead>
-                <Table.Tbody>
-                  {submissions.map((submission) => (
+              <>
+                {/* Filter */}
+                <Group justify="space-between" mb="md">
+                  <Text fw={600}>Daftar Submissions ({filteredSubmissions.length})</Text>
+                  <Select
+                    placeholder="Filter submissions"
+                    value={submissionFilter}
+                    onChange={(value) => {
+                      setSubmissionFilter(value as 'all' | 'submitted' | 'not_submitted');
+                      setCurrentPage(1);
+                    }}
+                    data={[
+                      { value: 'all', label: 'Semua' },
+                      { value: 'submitted', label: 'Sudah Submit' },
+                      { value: 'not_submitted', label: 'Belum Submit' }
+                    ]}
+                    size="sm"
+                    style={{ width: 200 }}
+                  />
+                </Group>
+
+                <Table>
+                  <Table.Thead>
+                    <Table.Tr>
+                      <Table.Th>Siswa</Table.Th>
+                      <Table.Th>Status</Table.Th>
+                      <Table.Th>Waktu Submit</Table.Th>
+                      <Table.Th>Nilai</Table.Th>
+                      <Table.Th>Feedback</Table.Th>
+                      <Table.Th>Drive Link</Table.Th>
+                      <Table.Th>Aksi</Table.Th>
+                    </Table.Tr>
+                  </Table.Thead>
+                  <Table.Tbody>
+                    {paginatedSubmissions.map((submission) => (
                     <Table.Tr key={submission.id}>
                       <Table.Td>
                         <Group gap="sm">
                           <div>
-                            <Text fw={500}>Student {submission.student_id}</Text>
-                            <Text size="sm" c="dimmed">ID: {submission.student_id}</Text>
+                            <Text fw={500}>{submission.student?.full_name || `Student ${submission.student_id}`}</Text>
+                            <Text size="sm" c="dimmed">{submission.student?.email || `ID: ${submission.student_id}`}</Text>
+                            {submission.submitted_at && (
+                              <Text size="xs" c="dimmed">
+                                Submit: {dayjs(submission.submitted_at).format('DD/MM/YYYY HH:mm')}
+                              </Text>
+                            )}
                           </div>
                         </Group>
                       </Table.Td>
                       <Table.Td>
                         <Badge 
-                          color={submission.status === 'submitted' ? 'green' : 'orange'} 
+                          color={
+                            submission.status === 'graded' ? 'blue' :
+                            submission.status === 'submitted' ? 
+                              (dayjs(submission.submitted_at).isAfter(dayjs(assignment.deadline)) ? 'red' : 'green') :
+                            'orange'
+                          } 
                           variant="light"
-                          leftSection={submission.status === 'submitted' ? <IconCheck size={12} /> : <IconClock size={12} />}
+                          leftSection={
+                            submission.status === 'graded' ? <IconTrophy size={12} /> :
+                            submission.status === 'submitted' ? 
+                              (dayjs(submission.submitted_at).isAfter(dayjs(assignment.deadline)) ? <IconClock size={12} /> : <IconCheck size={12} />) :
+                            <IconClock size={12} />
+                          }
                         >
-                          {submission.status === 'submitted' ? 'Submitted' : 'Pending'}
+                          {submission.status === 'graded' ? 'Dinilai' :
+                           submission.status === 'submitted' ? 
+                             (dayjs(submission.submitted_at).isAfter(dayjs(assignment.deadline)) ? 'Terlambat' : 'Dikirim') :
+                           'Pending'}
                         </Badge>
                       </Table.Td>
                       <Table.Td>
@@ -393,18 +462,48 @@ export function AssignmentDetail() {
                         </Text>
                       </Table.Td>
                       <Table.Td>
+                        {submission.drive_link ? (
+                          <Button
+                            size="xs"
+                            variant="light"
+                            component="a"
+                            href={submission.drive_link}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                          >
+                            Lihat File
+                          </Button>
+                        ) : (
+                          <Text size="sm" c="dimmed">-</Text>
+                        )}
+                      </Table.Td>
+                      <Table.Td>
                         <Button
                           size="xs"
                           variant="light"
-                          onClick={() => navigate(`/teacher/submissions/${submission.id}`)}
+                          leftSection={<IconEdit size={14} />}
+                          disabled={submission.status === 'pending'}
                         >
-                          Detail
+                          Nilai
                         </Button>
                       </Table.Td>
                     </Table.Tr>
-                  ))}
-                </Table.Tbody>
-              </Table>
+                    ))}
+                  </Table.Tbody>
+                </Table>
+                
+                {/* Pagination */}
+                <Pagination
+                  totalItems={totalSubmissions}
+                  itemsPerPage={itemsPerPage}
+                  currentPage={currentPage}
+                  onPageChange={handlePageChange}
+                  onItemsPerPageChange={handleItemsPerPageChange}
+                  showItemsPerPage={true}
+                  showTotal={true}
+                  size="sm"
+                />
+              </>
             ) : (
               <EmptyState
                 icon={IconUsers}

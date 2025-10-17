@@ -18,6 +18,7 @@ import {
   Modal,
   NumberInput,
   Textarea,
+  Select,
 } from '@mantine/core';
 import { 
   IconArrowLeft,
@@ -35,7 +36,7 @@ import { Assignment, Submission } from '../../types';
 import { classService } from '../../services/classService';
 import { assignmentService } from '../../services/assignmentService';
 import { submissionService } from '../../services/submissionService';
-import { LoadingSpinner, EmptyState } from '../../components';
+import { LoadingSpinner, EmptyState, Pagination } from '../../components';
 import { notifications } from '@mantine/notifications';
 import { formatGrade } from '../../utils/romanNumerals';
 import dayjs from 'dayjs';
@@ -55,6 +56,9 @@ export function ClassAssignments() {
   const [selectedSubmission, setSelectedSubmission] = useState<Submission | null>(null);
   const [grade, setGrade] = useState<number>(0);
   const [feedback, setFeedback] = useState<string>('');
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage, setItemsPerPage] = useState(10);
+  const [submissionFilter, setSubmissionFilter] = useState<'all' | 'submitted' | 'not_submitted'>('all');
 
   useEffect(() => {
     if (id) {
@@ -150,6 +154,32 @@ export function ClassAssignments() {
     setGrade(submission.grade || 0);
     setFeedback(submission.feedback || '');
     setGradingModalOpen(true);
+  };
+
+  // Filter submissions
+  const filteredSubmissions = submissions.filter(submission => {
+    if (submissionFilter === 'submitted') {
+      return submission.status === 'submitted' || submission.status === 'graded';
+    } else if (submissionFilter === 'not_submitted') {
+      return submission.status === 'pending';
+    }
+    return true; // 'all'
+  });
+
+  // Pagination logic
+  const totalSubmissions = filteredSubmissions.length;
+  const totalPages = Math.ceil(totalSubmissions / itemsPerPage);
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const endIndex = startIndex + itemsPerPage;
+  const paginatedSubmissions = filteredSubmissions.slice(startIndex, endIndex);
+
+  const handlePageChange = (page: number) => {
+    setCurrentPage(page);
+  };
+
+  const handleItemsPerPageChange = (newItemsPerPage: number) => {
+    setItemsPerPage(newItemsPerPage);
+    setCurrentPage(1);
   };
 
   if (loading) {
@@ -315,18 +345,40 @@ export function ClassAssignments() {
         >
           <Stack gap="md">
             {submissions.length > 0 ? (
-              <Table>
-                <Table.Thead>
-                  <Table.Tr>
-                    <Table.Th>Siswa</Table.Th>
-                    <Table.Th>Status</Table.Th>
-                    <Table.Th>Nilai</Table.Th>
-                    <Table.Th>Dikirim</Table.Th>
-                    <Table.Th width={100}></Table.Th>
-                  </Table.Tr>
-                </Table.Thead>
-                <Table.Tbody>
-                  {submissions.map((submission) => (
+              <>
+                {/* Filter */}
+                <Group justify="space-between" mb="md">
+                  <Text fw={600}>Daftar Submissions ({filteredSubmissions.length})</Text>
+                  <Select
+                    placeholder="Filter submissions"
+                    value={submissionFilter}
+                    onChange={(value) => {
+                      setSubmissionFilter(value as 'all' | 'submitted' | 'not_submitted');
+                      setCurrentPage(1);
+                    }}
+                    data={[
+                      { value: 'all', label: 'Semua' },
+                      { value: 'submitted', label: 'Sudah Submit' },
+                      { value: 'not_submitted', label: 'Belum Submit' }
+                    ]}
+                    size="sm"
+                    style={{ width: 200 }}
+                  />
+                </Group>
+
+                <Table>
+                  <Table.Thead>
+                    <Table.Tr>
+                      <Table.Th>Siswa</Table.Th>
+                      <Table.Th>Status</Table.Th>
+                      <Table.Th>Nilai</Table.Th>
+                      <Table.Th>Dikirim</Table.Th>
+                      <Table.Th>Drive Link</Table.Th>
+                      <Table.Th width={100}></Table.Th>
+                    </Table.Tr>
+                  </Table.Thead>
+                  <Table.Tbody>
+                    {paginatedSubmissions.map((submission) => (
                     <Table.Tr key={submission.id}>
                       <Table.Td>
                         <Group gap="sm">
@@ -341,11 +393,19 @@ export function ClassAssignments() {
                       </Table.Td>
                       <Table.Td>
                         <Badge 
-                          color={submission.status === 'submitted' ? 'green' : 'orange'} 
+                          color={
+                            submission.status === 'graded' ? 'blue' :
+                            submission.status === 'submitted' ? 
+                              (selectedAssignment && dayjs(submission.submitted_at).isAfter(dayjs(selectedAssignment.deadline)) ? 'red' : 'green') :
+                            'orange'
+                          } 
                           variant="light" 
                           size="sm"
                         >
-                          {submission.status === 'submitted' ? 'Dikirim' : 'Draft'}
+                          {submission.status === 'graded' ? 'Dinilai' :
+                           submission.status === 'submitted' ? 
+                             (selectedAssignment && dayjs(submission.submitted_at).isAfter(dayjs(selectedAssignment.deadline)) ? 'Terlambat' : 'Dikirim') :
+                           'Pending'}
                         </Badge>
                       </Table.Td>
                       <Table.Td>
@@ -357,8 +417,27 @@ export function ClassAssignments() {
                       </Table.Td>
                       <Table.Td>
                         <Text size="sm">
-                          {dayjs(submission.submitted_at).format('DD/MM/YYYY HH:mm')}
+                          {submission.submitted_at ? 
+                            dayjs(submission.submitted_at).format('DD/MM/YYYY HH:mm') : 
+                            '-'
+                          }
                         </Text>
+                      </Table.Td>
+                      <Table.Td>
+                        {submission.drive_link ? (
+                          <Button
+                            size="xs"
+                            variant="light"
+                            component="a"
+                            href={submission.drive_link}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                          >
+                            Lihat File
+                          </Button>
+                        ) : (
+                          <Text size="sm" c="dimmed">-</Text>
+                        )}
                       </Table.Td>
                       <Table.Td>
                         <Button
@@ -366,14 +445,28 @@ export function ClassAssignments() {
                           variant="light"
                           leftSection={<IconEdit size={14} />}
                           onClick={() => openGradingModal(submission)}
+                          disabled={submission.status === 'pending'}
                         >
                           Nilai
                         </Button>
                       </Table.Td>
                     </Table.Tr>
-                  ))}
-                </Table.Tbody>
-              </Table>
+                    ))}
+                  </Table.Tbody>
+                </Table>
+                
+                {/* Pagination */}
+                <Pagination
+                  totalItems={totalSubmissions}
+                  itemsPerPage={itemsPerPage}
+                  currentPage={currentPage}
+                  onPageChange={handlePageChange}
+                  onItemsPerPageChange={handleItemsPerPageChange}
+                  showItemsPerPage={true}
+                  showTotal={true}
+                  size="sm"
+                />
+              </>
             ) : (
               <EmptyState
                 icon={IconUsers}

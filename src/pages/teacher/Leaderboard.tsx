@@ -363,7 +363,7 @@ export function Leaderboard() {
                 </Avatar>
                 <div style={{ flex: 1 }}>
                   <Text fw={600} size="lg">
-                    Kelas {formatGrade(stat.grade)}
+                  {formatGrade(stat.grade)}
                   </Text>
                   <Text size="sm" c="dimmed">
                     {stat.total_students} siswa

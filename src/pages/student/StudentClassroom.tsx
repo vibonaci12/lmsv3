@@ -524,19 +524,21 @@ export function StudentClassroom() {
     try {
       setSubmitting(true);
 
-      // Create submission record with drive link
+      // Update existing submission record with drive link
       const { error: submissionError } = await supabase
         .from('submissions')
-        .insert({
-          assignment_id: selectedAssignment.id,
-          student_id: student.id,
+        .update({
           status: 'submitted',
           submitted_at: new Date().toISOString(),
-          drive_link: submissionDriveLink.trim(),
-          submission_text: submissionText || null
-        });
+          drive_link: submissionDriveLink.trim()
+        })
+        .eq('assignment_id', selectedAssignment.id)
+        .eq('student_id', student.id);
 
-      if (submissionError) throw submissionError;
+      if (submissionError) {
+        console.error('Submission error details:', submissionError);
+        throw submissionError;
+      }
 
       notifications.show({
         title: 'Berhasil',
@@ -552,11 +554,11 @@ export function StudentClassroom() {
       // Reload assignments
       const newAssignments = await loadAssignments();
       setAssignments(newAssignments);
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error submitting assignment:', error);
       notifications.show({
         title: 'Error',
-        message: 'Gagal mengumpulkan tugas',
+        message: error?.message || 'Gagal mengumpulkan tugas. Pastikan tugas sudah tersedia untuk Anda.',
         color: 'red',
       });
     } finally {

@@ -335,7 +335,7 @@ export function StudentDashboard() {
             value={stats.totalAssignments}
             icon={IconClipboardList}
             color="blue"
-            onClick={() => navigate('/student/assignments')}
+            onClick={() => navigate('/student/classroom')}
           />
           <StatCard
             title="Tugas Dikumpulkan"
@@ -343,7 +343,7 @@ export function StudentDashboard() {
             icon={IconCheck}
             color="green"
             subtitle={`${stats.totalAssignments > 0 ? Math.round((stats.submittedAssignments / stats.totalAssignments) * 100) : 0}% selesai`}
-            onClick={() => navigate('/student/assignments')}
+            onClick={() => navigate('/student/classroom')}
           />
           <StatCard
             title="Tugas Dinilai"
@@ -351,7 +351,7 @@ export function StudentDashboard() {
             icon={IconTrophy}
             color="orange"
             subtitle={`Rata-rata: ${stats.averageGrade.toFixed(1)}`}
-            onClick={() => navigate('/student/grades')}
+            onClick={() => navigate('/student/leaderboard')}
           />
           <StatCard
             title="Total Poin"
@@ -359,7 +359,7 @@ export function StudentDashboard() {
             icon={IconTrophy}
             color="purple"
             subtitle={`${stats.maxPoints > 0 ? Math.round((stats.totalPoints / stats.maxPoints) * 100) : 0}%`}
-            onClick={() => navigate('/student/grades')}
+            onClick={() => navigate('/student/leaderboard')}
           />
         </SimpleGrid>
 
@@ -434,7 +434,7 @@ export function StudentDashboard() {
                   <Button 
                     variant="subtle" 
                     size="xs"
-                    onClick={() => navigate('/student/assignments')}
+                    onClick={() => navigate('/student/classroom')}
                   >
                     Lihat Semua
                   </Button>
@@ -451,7 +451,7 @@ export function StudentDashboard() {
                           icon={deadlineStatus.status === 'overdue' ? <IconX size={16} /> : <IconClock size={16} />}
                           color={deadlineStatus.color}
                           title={assignment.title}
-                          onClick={() => navigate(`/student/assignments/${assignment.id}`)}
+                          onClick={() => navigate('/student/classroom')}
                           style={{ cursor: 'pointer' }}
                         >
                           <Group justify="space-between">
@@ -494,7 +494,7 @@ export function StudentDashboard() {
                   <Button 
                     variant="subtle" 
                     size="xs"
-                    onClick={() => navigate('/student/grades')}
+                    onClick={() => navigate('/student/leaderboard')}
                   >
                     Lihat Semua
                   </Button>
@@ -543,7 +543,7 @@ export function StudentDashboard() {
                   <Button
                     variant="light"
                     leftSection={<IconClipboardList size={16} />}
-                    onClick={() => navigate('/student/assignments')}
+                    onClick={() => navigate('/student/classroom')}
                     fullWidth
                   >
                     Lihat Tugas
@@ -551,7 +551,7 @@ export function StudentDashboard() {
                   <Button
                     variant="light"
                     leftSection={<IconTrophy size={16} />}
-                    onClick={() => navigate('/student/grades')}
+                    onClick={() => navigate('/student/leaderboard')}
                     fullWidth
                   >
                     Lihat Nilai
@@ -559,7 +559,7 @@ export function StudentDashboard() {
                   <Button
                     variant="light"
                     leftSection={<IconBook size={16} />}
-                    onClick={() => navigate('/student/classes')}
+                    onClick={() => navigate('/student/classroom')}
                     fullWidth
                   >
                     Kelas Saya

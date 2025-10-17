@@ -267,64 +267,74 @@ export const gradeService = {
   },
 
   async getGradeAnalytics() {
-    // Get system-wide grade analytics
-    const { data: submissions, error } = await supabase
-      .from('submissions')
-      .select(`
-        grade,
-        status,
-        assignment:assignments(
-          total_points,
-          assignment_type,
-          class:classes(grade, subject)
-        )
-      `)
-      .eq('status', 'graded');
+    try {
+      // Get system-wide grade analytics
+      const { data: submissions, error } = await supabase
+        .from('submissions')
+        .select(`
+          grade,
+          status,
+          assignment:assignments(
+            total_points,
+            assignment_type,
+            class_id,
+            target_grade,
+            class:classes(grade, name)
+          )
+        `)
+        .eq('status', 'graded');
 
-    if (error) throw error;
+      if (error) throw error;
 
-    // Group by grade level
-    const byGrade = {
-      '10': { total: 0, points: 0, maxPoints: 0 },
-      '11': { total: 0, points: 0, maxPoints: 0 },
-      '12': { total: 0, points: 0, maxPoints: 0 },
-    };
+      // Group by grade level
+      const byGrade: Record<string, { total: number, points: number, maxPoints: number }> = {
+        '10': { total: 0, points: 0, maxPoints: 0 },
+        '11': { total: 0, points: 0, maxPoints: 0 },
+        '12': { total: 0, points: 0, maxPoints: 0 },
+      };
 
-    // Group by subject
-    const bySubject: Record<string, { total: 0, points: 0, maxPoints: 0 }> = {};
+      // Group by subject/class
+      const bySubject: Record<string, { total: number, points: number, maxPoints: number }> = {};
 
-    submissions.forEach(submission => {
-      const assignment = submission.assignment as any;
-      const grade = assignment.class.grade;
-      const subject = assignment.class.subject;
+      submissions?.forEach(submission => {
+        const assignment = submission.assignment as any;
+        const grade = assignment.target_grade || assignment.class?.grade;
+        const subject = assignment.class?.name || 'Unknown';
 
-      if (byGrade[grade as keyof typeof byGrade]) {
-        byGrade[grade as keyof typeof byGrade].total++;
-        byGrade[grade as keyof typeof byGrade].points += submission.grade || 0;
-        byGrade[grade as keyof typeof byGrade].maxPoints += assignment.total_points;
-      }
+        if (grade && byGrade[grade]) {
+          byGrade[grade].total++;
+          byGrade[grade].points += submission.grade || 0;
+          byGrade[grade].maxPoints += assignment.total_points || 0;
+        }
 
-      if (!bySubject[subject]) {
-        bySubject[subject] = { total: 0, points: 0, maxPoints: 0 };
-      }
-      bySubject[subject].total++;
-      bySubject[subject].points += submission.grade || 0;
-      bySubject[subject].maxPoints += assignment.total_points;
-    });
+        if (!bySubject[subject]) {
+          bySubject[subject] = { total: 0, points: 0, maxPoints: 0 };
+        }
+        bySubject[subject].total++;
+        bySubject[subject].points += submission.grade || 0;
+        bySubject[subject].maxPoints += assignment.total_points || 0;
+      });
 
-    return {
-      byGrade: Object.entries(byGrade).map(([grade, data]) => ({
-        grade,
-        average: data.total > 0 ? data.points / data.total : 0,
-        percentage: data.maxPoints > 0 ? (data.points / data.maxPoints) * 100 : 0,
-        totalSubmissions: data.total,
-      })),
-      bySubject: Object.entries(bySubject).map(([subject, data]) => ({
-        subject,
-        average: data.total > 0 ? data.points / data.total : 0,
-        percentage: data.maxPoints > 0 ? (data.points / data.maxPoints) * 100 : 0,
-        totalSubmissions: data.total,
-      })),
-    };
+      return {
+        byGrade: Object.entries(byGrade).map(([grade, data]) => ({
+          grade,
+          average: data.total > 0 ? data.points / data.total : 0,
+          percentage: data.maxPoints > 0 ? (data.points / data.maxPoints) * 100 : 0,
+          totalSubmissions: data.total,
+        })),
+        bySubject: Object.entries(bySubject).map(([subject, data]) => ({
+          subject,
+          average: data.total > 0 ? data.points / data.total : 0,
+          percentage: data.maxPoints > 0 ? (data.points / data.maxPoints) * 100 : 0,
+          totalSubmissions: data.total,
+        })),
+      };
+    } catch (error) {
+      console.error('Error getting grade analytics:', error);
+      return {
+        byGrade: [],
+        bySubject: [],
+      };
+    }
   },
 };

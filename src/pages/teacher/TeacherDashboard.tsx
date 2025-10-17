@@ -14,7 +14,10 @@ import {
   Paper,
   SimpleGrid,
   Center,
-  Loader
+  Loader,
+  Slider,
+  Modal,
+  ScrollArea
 } from '@mantine/core';
 import { 
   IconUsers, 
@@ -76,17 +79,35 @@ export function TeacherDashboard() {
   const [unreadNotifications, setUnreadNotifications] = useState(0);
   const [gradeAnalytics, setGradeAnalytics] = useState<any>(null);
   const [submissionTrends, setSubmissionTrends] = useState<any[]>([]);
+  const [chartSliderValue, setChartSliderValue] = useState(7); // Default 7 days
+  const [notificationsModalOpen, setNotificationsModalOpen] = useState(false);
 
   useEffect(() => {
     loadDashboardData();
   }, []);
 
-  const generateSubmissionTrends = async (assignments: any[]) => {
+  useEffect(() => {
+    // Update trends when slider value changes
+    if (submissionTrends.length > 0) {
+      const updateTrends = async () => {
+        try {
+          const assignments = await assignmentService.getAllAssignments();
+          const newTrends = await generateSubmissionTrends(assignments, chartSliderValue);
+          setSubmissionTrends(newTrends);
+        } catch (error) {
+          console.error('Error updating trends:', error);
+        }
+      };
+      updateTrends();
+    }
+  }, [chartSliderValue]);
+
+  const generateSubmissionTrends = async (assignments: any[], days: number = 7) => {
     // Generate trends based on assignment creation dates
     const trends = [];
     const today = new Date();
     
-    for (let i = 6; i >= 0; i--) {
+    for (let i = days - 1; i >= 0; i--) {
       const date = new Date(today);
       date.setDate(date.getDate() - i);
       const dateStr = date.toISOString().split('T')[0];
@@ -138,7 +159,10 @@ export function TeacherDashboard() {
       ).length;
 
       // Load grade analytics
-      const analytics = await gradeService.getGradeAnalytics().catch(() => ({ byGrade: [] }));
+      const analytics = await gradeService.getGradeAnalytics().catch((error) => {
+        console.error('Error loading grade analytics:', error);
+        return { byGrade: [], bySubject: [] };
+      });
       
       // Load submission trends (real data from assignments)
       const trends = await generateSubmissionTrends(assignments);
@@ -223,6 +247,7 @@ export function TeacherDashboard() {
               leftSection={<IconBell size={16} />}
               variant="light"
               color="blue"
+              onClick={() => setNotificationsModalOpen(true)}
             >
               Notifikasi
               {unreadNotifications > 0 && (
@@ -268,7 +293,7 @@ export function TeacherDashboard() {
             value={stats.pendingReviews}
             icon={IconFileText}
             color="red"
-            onClick={() => navigate('/teacher/grading')}
+            onClick={() => navigate('/teacher/assignments')}
           />
         </SimpleGrid>
 
@@ -278,7 +303,29 @@ export function TeacherDashboard() {
             <Stack gap="md">
               {/* Submission Trends */}
               <Card shadow="sm" padding="lg" radius="md" withBorder>
-                <Text fw={600} mb="md">Tren Pembuatan Tugas (7 Hari Terakhir)</Text>
+                <Group justify="space-between" mb="md">
+                  <Text fw={600}>Tren Pembuatan Tugas</Text>
+                  <Text size="sm" c="dimmed">{chartSliderValue} hari terakhir</Text>
+                </Group>
+                
+                <Group mb="md">
+                  <Text size="sm" c="dimmed">Rentang waktu:</Text>
+                  <Slider
+                    value={chartSliderValue}
+                    onChange={setChartSliderValue}
+                    min={3}
+                    max={30}
+                    step={1}
+                    marks={[
+                      { value: 3, label: '3 hari' },
+                      { value: 7, label: '7 hari' },
+                      { value: 14, label: '14 hari' },
+                      { value: 30, label: '30 hari' }
+                    ]}
+                    style={{ flex: 1, maxWidth: 300 }}
+                  />
+                </Group>
+                
                 <ResponsiveContainer width="100%" height={300}>
                   <LineChart data={submissionTrends}>
                     <CartesianGrid strokeDasharray="3 3" />
@@ -308,9 +355,9 @@ export function TeacherDashboard() {
               </Card>
 
               {/* Grade Distribution */}
-              {gradeAnalytics && gradeAnalytics.byGrade && gradeAnalytics.byGrade.length > 0 ? (
-                <Card shadow="sm" padding="lg" radius="md" withBorder>
-                  <Text fw={600} mb="md">Rata-rata Nilai per Tingkat Kelas</Text>
+              <Card shadow="sm" padding="lg" radius="md" withBorder>
+                <Text fw={600} mb="md">Distribusi Nilai per Tingkat Kelas</Text>
+                {gradeAnalytics && gradeAnalytics.byGrade && gradeAnalytics.byGrade.some((item: any) => item.totalSubmissions > 0) ? (
                   <ResponsiveContainer width="100%" height={300}>
                     <BarChart data={gradeAnalytics.byGrade}>
                       <CartesianGrid strokeDasharray="3 3" />
@@ -323,16 +370,16 @@ export function TeacherDashboard() {
                         tickFormatter={(value) => `${value}%`}
                       />
                       <Tooltip 
-                        formatter={(value) => [`${Number(value).toFixed(1)}%`, 'Rata-rata']}
+                        formatter={(value, name, props) => [
+                          `${Number(value).toFixed(1)}%`, 
+                          'Rata-rata'
+                        ]}
                         labelFormatter={(value) => `Kelas ${value}`}
                       />
                       <Bar dataKey="percentage" fill="#51cf66" radius={[4, 4, 0, 0]} />
                     </BarChart>
                   </ResponsiveContainer>
-                </Card>
-              ) : (
-                <Card shadow="sm" padding="lg" radius="md" withBorder>
-                  <Text fw={600} mb="md">Distribusi Nilai per Tingkat Kelas</Text>
+                ) : (
                   <Center h={300}>
                     <EmptyState
                       icon={IconFileText}
@@ -340,8 +387,8 @@ export function TeacherDashboard() {
                       description="Data distribusi nilai akan muncul setelah ada penilaian tugas"
                     />
                   </Center>
-                </Card>
-              )}
+                )}
+              </Card>
             </Stack>
           </Grid.Col>
 
@@ -351,7 +398,11 @@ export function TeacherDashboard() {
               <Card shadow="sm" padding="lg" radius="md" withBorder>
                 <Group justify="space-between" mb="md">
                   <Text fw={600}>Aktivitas Terbaru</Text>
-                  <Button variant="subtle" size="xs">
+                  <Button 
+                    variant="subtle" 
+                    size="xs"
+                    onClick={() => navigate('/teacher/activities')}
+                  >
                     Lihat Semua
                   </Button>
                 </Group>
@@ -383,6 +434,40 @@ export function TeacherDashboard() {
                 )}
               </Card>
 
+              {/* Grade Distribution by Subject */}
+              <Card shadow="sm" padding="lg" radius="md" withBorder>
+                <Text fw={600} mb="md">Distribusi Nilai per Mata Pelajaran</Text>
+                {gradeAnalytics && gradeAnalytics.bySubject && gradeAnalytics.bySubject.some((item: any) => item.totalSubmissions > 0) ? (
+                  <ResponsiveContainer width="100%" height={250}>
+                    <PieChart>
+                      <Pie
+                        data={gradeAnalytics.bySubject.filter((item: any) => item.totalSubmissions > 0)}
+                        cx="50%"
+                        cy="50%"
+                        labelLine={false}
+                        label={({ subject, percentage }) => `${subject}: ${percentage.toFixed(1)}%`}
+                        outerRadius={80}
+                        fill="#8884d8"
+                        dataKey="percentage"
+                      >
+                        {gradeAnalytics.bySubject.filter((item: any) => item.totalSubmissions > 0).map((entry: any, index: number) => (
+                          <Cell key={`cell-${index}`} fill={`hsl(${index * 60}, 70%, 50%)`} />
+                        ))}
+                      </Pie>
+                      <Tooltip formatter={(value) => [`${Number(value).toFixed(1)}%`, 'Rata-rata']} />
+                    </PieChart>
+                  </ResponsiveContainer>
+                ) : (
+                  <Center h={250}>
+                    <EmptyState
+                      icon={IconFileText}
+                      title="Belum ada data nilai"
+                      description="Data distribusi nilai akan muncul setelah ada penilaian tugas"
+                    />
+                  </Center>
+                )}
+              </Card>
+
               {/* Quick Actions */}
               <Card shadow="sm" padding="lg" radius="md" withBorder>
                 <Text fw={600} mb="md">Aksi Cepat</Text>
@@ -398,18 +483,18 @@ export function TeacherDashboard() {
                   <Button
                     variant="light"
                     leftSection={<IconUsers size={16} />}
-                    onClick={() => navigate('/teacher/students')}
+                    onClick={() => navigate('/teacher/classes')}
                     fullWidth
                   >
-                    Kelola Siswa
+                    Kelola Kelas
                   </Button>
                   <Button
                     variant="light"
                     leftSection={<IconFileText size={16} />}
-                    onClick={() => navigate('/teacher/grading')}
+                    onClick={() => navigate('/teacher/assignments')}
                     fullWidth
                   >
-                    Penilaian
+                    Penilaian Tugas
                   </Button>
                 </Stack>
               </Card>
@@ -417,6 +502,42 @@ export function TeacherDashboard() {
           </Grid.Col>
         </Grid>
       </Stack>
+
+      {/* Notifications Modal */}
+      <Modal
+        opened={notificationsModalOpen}
+        onClose={() => setNotificationsModalOpen(false)}
+        title="Notifikasi"
+        size="md"
+      >
+        <ScrollArea h={400}>
+          {recentActivities.length > 0 ? (
+            <Timeline active={-1} bulletSize={24} lineWidth={2}>
+              {recentActivities.map((activity) => (
+                <Timeline.Item
+                  key={activity.id}
+                  bullet={activityLogService.getActivityIcon(activity.action, activity.entity_type)}
+                  title={activityLogService.formatActivityDescription(
+                    activity.action, 
+                    activity.entity_type, 
+                    activity.description
+                  )}
+                >
+                  <Text size="xs" c="dimmed">
+                    {activity.teacher.full_name} • {new Date(activity.created_at).toLocaleString('id-ID')}
+                  </Text>
+                </Timeline.Item>
+              ))}
+            </Timeline>
+          ) : (
+            <EmptyState
+              icon={IconBell}
+              title="Belum ada notifikasi"
+              description="Notifikasi akan muncul di sini"
+            />
+          )}
+        </ScrollArea>
+      </Modal>
     </Container>
   );
 }

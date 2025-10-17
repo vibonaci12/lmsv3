@@ -57,6 +57,8 @@ export interface Submission {
   feedback?: string | null;
   graded_at?: string | null;
   graded_by?: string | null;
+  drive_link?: string | null;
+  student?: Student;
   created_at: string;
 }
 

@@ -73,41 +73,44 @@ export const submissionService = {
     if (answersError) throw answersError;
   },
 
+  async getAssignmentSubmissions(assignmentId: string) {
+    const { data, error } = await supabase
+      .from('submissions')
+      .select(`
+        *,
+        student:students(
+          id,
+          full_name,
+          email
+        )
+      `)
+      .eq('assignment_id', assignmentId)
+      .order('submitted_at', { ascending: false });
+
+    if (error) throw error;
+    return data;
+  },
+
   async gradeSubmission(
     submissionId: string,
-    grade: number,
-    feedback: string | null,
-    answers: Array<{
-      id: string;
-      points_earned: number;
-      feedback?: string;
-    }>,
-    gradedBy: string
+    gradeData: {
+      grade: number;
+      feedback: string;
+      graded_by: string;
+    }
   ) {
     const { error: submissionError } = await supabase
       .from('submissions')
       .update({
         status: 'graded',
-        grade,
-        feedback,
+        grade: gradeData.grade,
+        feedback: gradeData.feedback,
         graded_at: new Date().toISOString(),
-        graded_by: gradedBy,
+        graded_by: gradeData.graded_by,
       })
       .eq('id', submissionId);
 
     if (submissionError) throw submissionError;
-
-    for (const answer of answers) {
-      const { error: answerError } = await supabase
-        .from('answers')
-        .update({
-          points_earned: answer.points_earned,
-          feedback: answer.feedback,
-        })
-        .eq('id', answer.id);
-
-      if (answerError) throw answerError;
-    }
 
     const { data: submission } = await supabase
       .from('submissions')
@@ -126,11 +129,11 @@ export const submissionService = {
     }
 
     await supabase.from('activity_logs').insert({
-      teacher_id: gradedBy,
+      teacher_id: gradeData.graded_by,
       action: 'grade',
       entity_type: 'submission',
       entity_id: submissionId,
-      description: `Graded submission with score ${grade}`,
+      description: `Graded submission with score ${gradeData.grade}`,
     });
   },
 };

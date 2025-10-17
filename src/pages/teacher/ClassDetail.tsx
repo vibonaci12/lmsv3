@@ -181,7 +181,7 @@ export function ClassDetail() {
             </Stack>
           </Paper>
           
-          <Paper p="md" withBorder style={{ cursor: 'pointer' }} onClick={() => handleNavigation(`/teacher/classes/${id}/assignments`, 'assignments')}>
+          <Paper p="md" withBorder style={{ cursor: 'pointer' }} onClick={() => handleNavigation('/teacher/assignments', 'assignments')}>
             <Stack gap="md">
               <Group gap="md">
                 <IconBook size={32} color="var(--mantine-color-green-6)" />
