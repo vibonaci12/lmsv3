@@ -12,25 +12,17 @@ import {
   ActionIcon,
   SimpleGrid,
   Paper,
-  Checkbox,
-  DateInput,
   Alert,
-  Table,
   Avatar,
   TextInput,
   Tabs,
   Progress,
   Divider,
-  Modal,
-  Flex,
-  Box,
   ThemeIcon,
   ScrollArea,
-  Tooltip,
   Switch,
   Radio
 } from '@mantine/core';
-import { DateInput as MantineDateInput } from '@mantine/dates';
 import { 
   IconArrowLeft,
   IconCalendar, 
@@ -43,16 +35,9 @@ import {
   IconHistory,
   IconTrendingUp,
   IconBolt,
-  IconPlus,
-  IconMinus,
-  IconEdit,
-  IconTrash,
   IconRefresh,
   IconDownload,
-  IconFilter,
-  IconSearch,
-  IconEye,
-  IconEyeOff
+  IconSearch
 } from '@tabler/icons-react';
 import { useAuth } from '../../contexts/AuthContext';
 import { Student } from '../../types';
@@ -76,7 +61,6 @@ export function ClassAttendance() {
   const [attendanceHistory, setAttendanceHistory] = useState<any[]>([]);
   const [attendanceStatuses, setAttendanceStatuses] = useState<Record<string, 'present' | 'absent' | 'sick' | 'permission'>>({});
   const [attendanceNotes, setAttendanceNotes] = useState<Record<string, string>>({});
-  const [attendanceSummary, setAttendanceSummary] = useState<any>(null);
   const [activeTab, setActiveTab] = useState<string>('today');
   const [searchTerm, setSearchTerm] = useState('');
   const [showOnlyAbsent, setShowOnlyAbsent] = useState(false);
@@ -93,11 +77,8 @@ export function ClassAttendance() {
     try {
       setLoading(true);
       
-      // Load class data and statistics in parallel
-      const [classInfo, attendanceStats] = await Promise.all([
-        classService.getClassById(id),
-        attendanceService.getClassAttendanceStats(id)
-      ]);
+      // Load class data
+      const classInfo = await classService.getClassById(id);
 
       // Get enrolled students (only active ones for attendance)
       const enrolledStudents = classInfo.class_students
@@ -106,7 +87,7 @@ export function ClassAttendance() {
       
       setClassData(classInfo);
       setStudents(enrolledStudents);
-      setAttendanceSummary(attendanceStats);
+      // Attendance summary is calculated in real-time
       
       // Load attendance history
       await loadAttendanceHistory();
@@ -458,10 +439,16 @@ export function ClassAttendance() {
                     <Text fw={600}>Tanggal Absensi</Text>
                     <Text size="sm" c="dimmed">Pilih tanggal untuk mencatat absensi</Text>
                   </div>
-                  <MantineDateInput
-                    value={selectedDate}
-                    onChange={setSelectedDate}
-                    placeholder="Pilih tanggal"
+                  <TextInput
+                    value={selectedDate ? dayjs(selectedDate).format('DD/MM/YYYY') : ''}
+                    onChange={(e) => {
+                      const value = e.target.value;
+                      if (value.match(/^\d{2}\/\d{2}\/\d{4}$/)) {
+                        const [day, month, year] = value.split('/');
+                        setSelectedDate(new Date(parseInt(year), parseInt(month) - 1, parseInt(day)));
+                      }
+                    }}
+                    placeholder="DD/MM/YYYY (contoh: 15/03/2024)"
                     size="md"
                     style={{ minWidth: 200 }}
                   />

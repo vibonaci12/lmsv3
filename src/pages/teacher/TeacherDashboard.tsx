@@ -81,6 +81,31 @@ export function TeacherDashboard() {
     loadDashboardData();
   }, []);
 
+  const generateSubmissionTrends = async (assignments: any[]) => {
+    // Generate trends based on assignment creation dates
+    const trends = [];
+    const today = new Date();
+    
+    for (let i = 6; i >= 0; i--) {
+      const date = new Date(today);
+      date.setDate(date.getDate() - i);
+      const dateStr = date.toISOString().split('T')[0];
+      
+      // Count assignments created on this date
+      const submissions = assignments.filter(assignment => {
+        const assignmentDate = new Date(assignment.created_at).toISOString().split('T')[0];
+        return assignmentDate === dateStr;
+      }).length;
+      
+      trends.push({
+        date: dateStr,
+        submissions: submissions
+      });
+    }
+    
+    return trends;
+  };
+
   const loadDashboardData = async () => {
     try {
       setLoading(true);
@@ -115,16 +140,8 @@ export function TeacherDashboard() {
       // Load grade analytics
       const analytics = await gradeService.getGradeAnalytics().catch(() => ({ byGrade: [] }));
       
-      // Load submission trends (mock data for now)
-      const trends = [
-        { date: '2024-01-01', submissions: 12 },
-        { date: '2024-01-02', submissions: 8 },
-        { date: '2024-01-03', submissions: 15 },
-        { date: '2024-01-04', submissions: 20 },
-        { date: '2024-01-05', submissions: 18 },
-        { date: '2024-01-06', submissions: 25 },
-        { date: '2024-01-07', submissions: 22 },
-      ];
+      // Load submission trends (real data from assignments)
+      const trends = await generateSubmissionTrends(assignments);
 
       setStats({
         totalClasses,
@@ -261,36 +278,68 @@ export function TeacherDashboard() {
             <Stack gap="md">
               {/* Submission Trends */}
               <Card shadow="sm" padding="lg" radius="md" withBorder>
-                <Text fw={600} mb="md">Tren Pengumpulan Tugas</Text>
+                <Text fw={600} mb="md">Tren Pembuatan Tugas (7 Hari Terakhir)</Text>
                 <ResponsiveContainer width="100%" height={300}>
                   <LineChart data={submissionTrends}>
                     <CartesianGrid strokeDasharray="3 3" />
-                    <XAxis dataKey="date" />
+                    <XAxis 
+                      dataKey="date" 
+                      tickFormatter={(value) => new Date(value).toLocaleDateString('id-ID', { month: 'short', day: 'numeric' })}
+                    />
                     <YAxis />
-                    <Tooltip />
+                    <Tooltip 
+                      labelFormatter={(value) => new Date(value).toLocaleDateString('id-ID', { 
+                        weekday: 'long', 
+                        year: 'numeric', 
+                        month: 'long', 
+                        day: 'numeric' 
+                      })}
+                      formatter={(value) => [`${value} tugas`, 'Jumlah']}
+                    />
                     <Line 
                       type="monotone" 
                       dataKey="submissions" 
                       stroke="#228be6" 
                       strokeWidth={2}
+                      dot={{ fill: '#228be6', strokeWidth: 2, r: 4 }}
                     />
                   </LineChart>
                 </ResponsiveContainer>
               </Card>
 
               {/* Grade Distribution */}
-              {gradeAnalytics && (
+              {gradeAnalytics && gradeAnalytics.byGrade && gradeAnalytics.byGrade.length > 0 ? (
                 <Card shadow="sm" padding="lg" radius="md" withBorder>
-                  <Text fw={600} mb="md">Distribusi Nilai per Kelas</Text>
+                  <Text fw={600} mb="md">Rata-rata Nilai per Tingkat Kelas</Text>
                   <ResponsiveContainer width="100%" height={300}>
                     <BarChart data={gradeAnalytics.byGrade}>
                       <CartesianGrid strokeDasharray="3 3" />
-                      <XAxis dataKey="grade" />
-                      <YAxis />
-                      <Tooltip />
-                      <Bar dataKey="average" fill="#51cf66" />
+                      <XAxis 
+                        dataKey="grade" 
+                        tickFormatter={(value) => `Kelas ${value}`}
+                      />
+                      <YAxis 
+                        domain={[0, 100]}
+                        tickFormatter={(value) => `${value}%`}
+                      />
+                      <Tooltip 
+                        formatter={(value) => [`${Number(value).toFixed(1)}%`, 'Rata-rata']}
+                        labelFormatter={(value) => `Kelas ${value}`}
+                      />
+                      <Bar dataKey="percentage" fill="#51cf66" radius={[4, 4, 0, 0]} />
                     </BarChart>
                   </ResponsiveContainer>
+                </Card>
+              ) : (
+                <Card shadow="sm" padding="lg" radius="md" withBorder>
+                  <Text fw={600} mb="md">Distribusi Nilai per Tingkat Kelas</Text>
+                  <Center h={300}>
+                    <EmptyState
+                      icon={IconFileText}
+                      title="Belum ada data nilai"
+                      description="Data distribusi nilai akan muncul setelah ada penilaian tugas"
+                    />
+                  </Center>
                 </Card>
               )}
             </Stack>

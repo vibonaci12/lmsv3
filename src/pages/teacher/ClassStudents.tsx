@@ -26,8 +26,8 @@ import {
   IconSearch,
   IconEdit,
   IconTrash,
-  IconUpload,
-  IconDownload,
+  IconFileUpload,
+  IconFileDownload,
   IconInfoCircle
 } from '@tabler/icons-react';
 import { useForm } from '@mantine/form';
@@ -61,6 +61,7 @@ export function ClassStudents() {
   const [bulkDeleteModalOpen, setBulkDeleteModalOpen] = useState(false);
   const [searchResults, setSearchResults] = useState<Student[]>([]);
   const [passwordLoading, setPasswordLoading] = useState(false);
+  const [addingStudent, setAddingStudent] = useState(false);
   
   // Pagination
   const {
@@ -348,6 +349,8 @@ export function ClassStudents() {
 
   const handleAddStudent = async (values: typeof form.values) => {
     try {
+      setAddingStudent(true);
+      
       const email = generateShortEmail(values.full_name, values.birth_date);
       const password = generatePassword(values.birth_date);
       
@@ -383,6 +386,8 @@ export function ClassStudents() {
         message: error.message || 'Gagal menambahkan siswa',
         color: 'red',
       });
+    } finally {
+      setAddingStudent(false);
     }
   };
 
@@ -593,21 +598,21 @@ export function ClassStudents() {
             <Group gap="sm">
               <Button
                 variant="light"
-                leftSection={<IconDownload size={16} />}
+                leftSection={<IconFileDownload size={16} />}
                 onClick={handleDownloadTemplate}
               >
                 Template
               </Button>
               <Button
                 variant="light"
-                leftSection={<IconDownload size={16} />}
+                leftSection={<IconFileDownload size={16} />}
                 onClick={handleExportExcel}
               >
                 Export Excel
               </Button>
               <Button
                 variant="light"
-                leftSection={<IconUpload size={16} />}
+                leftSection={<IconFileUpload size={16} />}
                 onClick={() => setImportModalOpen(true)}
               >
                 Import Excel
@@ -773,7 +778,7 @@ export function ClassStudents() {
                 >
                   Batal
                 </Button>
-                <Button type="submit">
+                <Button type="submit" loading={addingStudent}>
                   Tambah Siswa
                 </Button>
               </Group>

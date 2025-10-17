@@ -20,7 +20,7 @@ import {
   ActionIcon,
   Menu,
 } from '@mantine/core';
-import { DateInput } from '@mantine/dates';
+import { DateTimePicker } from '@mantine/dates';
 import { 
   IconPlus, 
   IconSearch, 
@@ -71,7 +71,7 @@ export function AssignmentList() {
       title: '',
       description: '',
       type: 'wajib' as 'wajib' | 'tambahan',
-      target_class_id: '',
+      class_id: '',
       target_grade: '10' as '10' | '11' | '12',
       deadline: new Date(),
       total_points: 100,
@@ -82,6 +82,8 @@ export function AssignmentList() {
       type: (value) => (!value ? 'Tipe tugas harus dipilih' : null),
       deadline: (value) => (!value ? 'Deadline harus diisi' : null),
       total_points: (value) => (value <= 0 ? 'Total poin harus lebih dari 0' : null),
+      class_id: (value, values) => (values.type === 'wajib' && !value ? 'Kelas harus dipilih untuk tugas wajib' : null),
+      target_grade: (value, values) => (values.type === 'tambahan' && !value ? 'Tingkat harus dipilih untuk tugas tambahan' : null),
     },
   });
 
@@ -159,13 +161,21 @@ export function AssignmentList() {
     try {
       setSubmitting(true);
       
+      console.log('Form values:', values);
+      
       const assignmentData = {
-        ...values,
+        title: values.title,
+        description: values.description,
         deadline: dayjs(values.deadline).format('YYYY-MM-DD HH:mm:ss'),
-        created_by: teacher.id,
+        total_points: values.total_points,
         assignment_type: values.type,
+        class_id: values.type === 'wajib' ? values.class_id : undefined,
+        target_grade: values.type === 'tambahan' ? values.target_grade : undefined,
         drive_link: values.drive_link || null,
+        created_by: teacher.id,
       };
+
+      console.log('Assignment data:', assignmentData);
 
       await assignmentService.createSimpleAssignment(assignmentData);
 
@@ -535,7 +545,7 @@ export function AssignmentList() {
                           label: `${cls.name} - ${formatGrade(cls.grade)}`
                         }))}
                         required
-                        {...form.getInputProps('target_class_id')}
+                        {...form.getInputProps('class_id')}
                       />
                     ) : (
                       <Select
@@ -551,11 +561,13 @@ export function AssignmentList() {
                       />
                     )}
 
-                    <DateInput
+                    <DateTimePicker
                       label="Deadline"
-                      placeholder="Pilih deadline"
+                      placeholder="Pilih tanggal dan waktu deadline"
                       required
                       {...form.getInputProps('deadline')}
+                      clearable
+                      valueFormat="DD/MM/YYYY HH:mm"
                     />
                   </Stack>
                 </Tabs.Panel>

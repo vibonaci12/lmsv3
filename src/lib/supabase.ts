@@ -121,10 +121,41 @@ export type Database = {
           assignment_type: 'wajib' | 'tambahan';
           class_id: string | null;
           target_grade: '10' | '11' | '12' | null;
+          drive_link: string | null;
           created_at: string;
           created_by: string | null;
           updated_at: string;
           updated_by: string | null;
+        };
+        Insert: {
+          id?: string;
+          title: string;
+          description?: string | null;
+          deadline: string;
+          total_points?: number;
+          assignment_type: 'wajib' | 'tambahan';
+          class_id?: string | null;
+          target_grade?: '10' | '11' | '12' | null;
+          drive_link?: string | null;
+          created_at?: string;
+          created_by?: string | null;
+          updated_at?: string;
+          updated_by?: string | null;
+        };
+        Update: {
+          id?: string;
+          title?: string;
+          description?: string | null;
+          deadline?: string;
+          total_points?: number;
+          assignment_type?: 'wajib' | 'tambahan';
+          class_id?: string | null;
+          target_grade?: '10' | '11' | '12' | null;
+          drive_link?: string | null;
+          created_at?: string;
+          created_by?: string | null;
+          updated_at?: string;
+          updated_by?: string | null;
         };
       };
       submissions: {

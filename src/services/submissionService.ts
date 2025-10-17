@@ -48,6 +48,7 @@ export const submissionService = {
       answer_text?: string;
       file_url?: string;
       file_name?: string;
+      drive_link?: string;
     }>
   ) {
     const { error: submissionError } = await supabase

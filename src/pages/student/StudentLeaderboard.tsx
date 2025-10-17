@@ -15,10 +15,8 @@ import {
   Alert,
   Progress,
   Table,
-  Tabs,
   ScrollArea,
   ActionIcon,
-  Center,
   Pagination
 } from '@mantine/core';
 import { 
@@ -26,20 +24,17 @@ import {
   IconMedal,
   IconAward,
   IconSearch,
-  IconFilter,
   IconRefresh,
-  IconUsers,
   IconClipboardList,
   IconTrendingUp,
   IconTarget,
   IconStar
 } from '@tabler/icons-react';
 import { useStudentAuth } from '../../contexts/StudentAuthContext';
-import { LoadingSpinner, EmptyState } from '../../components';
+import { LoadingSpinner } from '../../components';
 import { notifications } from '@mantine/notifications';
 import { formatGrade } from '../../utils/romanNumerals';
 import { supabase } from '../../lib/supabase';
-import dayjs from 'dayjs';
 
 interface StudentScore {
   id: string;
@@ -79,9 +74,8 @@ export function StudentLeaderboard() {
   const [personalStats, setPersonalStats] = useState<PersonalStats | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedGrade, setSelectedGrade] = useState<string>('');
-  const [activeTab, setActiveTab] = useState<string>('overall');
   const [currentPage, setCurrentPage] = useState(1);
-  const [itemsPerPage] = useState(20);
+  const [itemsPerPage] = useState(10);
 
   useEffect(() => {
     loadData();
@@ -91,28 +85,19 @@ export function StudentLeaderboard() {
     filterStudents();
   }, [students, searchTerm, selectedGrade]);
 
-  useEffect(() => {
-    setCurrentPage(1); // Reset to first page when filters change
-  }, [searchTerm, selectedGrade]);
 
   const loadData = async () => {
     try {
       setLoading(true);
       setError(null);
       
-      // Get student's grade first with optimized query
+      // Get student's grade first with simplified query
       const { data: studentData, error: studentError } = await supabase
         .from('students')
         .select(`
           id,
-          full_name,
-          email,
           class_students!inner(
-            class:classes(
-              id,
-              name,
-              grade
-            )
+            class:classes(grade)
           )
         `)
         .eq('id', student.id)
@@ -123,9 +108,9 @@ export function StudentLeaderboard() {
         throw new Error('Gagal memuat data siswa');
       }
 
-      const studentGrade = studentData.class_students[0]?.class.grade || '10';
+      const studentGrade = (studentData as any).class_students?.[0]?.class?.grade || '10';
 
-      // Get all students in the same grade with optimized query
+      // Get all students in the same grade with optimized query (limit to 100 for leaderboard)
       const { data: scoresData, error: scoresError } = await supabase
         .from('students')
         .select(`
@@ -141,7 +126,9 @@ export function StudentLeaderboard() {
           )
         `)
         .eq('is_active', true)
-        .eq('class_students.class.grade', studentGrade);
+        .eq('class_students.class.grade', studentGrade)
+        .limit(100)
+        .order('full_name');
 
       if (scoresError) throw scoresError;
 
@@ -149,7 +136,7 @@ export function StudentLeaderboard() {
       const { data: allAssignments, error: assignmentsError } = await supabase
         .from('assignments')
         .select('id, total_points, class_id, target_grade')
-        .or(`target_grade.eq.${studentGrade},class_id.in.(${scoresData?.map(s => s.class_students[0]?.class.id).filter(Boolean).join(',') || ''})`);
+        .or(`target_grade.eq.${studentGrade},class_id.in.(${scoresData?.map((s: any) => s.class_students?.[0]?.class?.id).filter(Boolean).join(',') || ''})`);
 
       if (assignmentsError) {
         console.error('Error loading assignments:', assignmentsError);
@@ -157,20 +144,16 @@ export function StudentLeaderboard() {
       }
 
       // Get all submissions for all students in one query
-      const studentIds = scoresData?.map(s => s.id) || [];
-      let allSubmissions = [];
+      const studentIds = scoresData?.map((s: any) => s.id) || [];
+      let allSubmissions: any[] = [];
       
       if (studentIds.length > 0) {
         const { data: submissionsData, error: submissionsError } = await supabase
           .from('submissions')
           .select(`
-            id,
             student_id,
             grade,
-            assignment:assignments(
-              total_points,
-              assignment_type
-            )
+            assignment:assignments(total_points)
           `)
           .in('student_id', studentIds)
           .eq('status', 'graded');
@@ -207,17 +190,28 @@ export function StudentLeaderboard() {
         }
       });
 
-      // Calculate scores for each student
+      // Calculate scores for each student (optimized)
+      const gradeAssignments = allAssignments?.filter(a => a.target_grade === studentGrade) || [];
+      
       for (const studentData of scoresData || []) {
-        const classId = studentData.class_students[0]?.class.id;
+        const classId = (studentData as any).class_students?.[0]?.class?.id;
         const classAssignments = assignmentsByClass.get(classId) || [];
-        const gradeAssignments = allAssignments?.filter(a => a.target_grade === studentGrade) || [];
         const allStudentAssignments = [...classAssignments, ...gradeAssignments];
         
         const submissions = submissionsByStudent.get(studentData.id) || [];
         
-        const totalPoints = allStudentAssignments.reduce((sum, assignment) => sum + assignment.total_points, 0);
-        const earnedPoints = submissions.reduce((sum, submission) => sum + (submission.grade || 0), 0);
+        // Optimized calculations
+        let totalPoints = 0;
+        let earnedPoints = 0;
+        
+        for (const assignment of allStudentAssignments) {
+          totalPoints += assignment.total_points;
+        }
+        
+        for (const submission of submissions) {
+          earnedPoints += submission.grade || 0;
+        }
+        
         const totalAssignments = allStudentAssignments.length;
         const completedAssignments = submissions.length;
         const averageScore = totalPoints > 0 ? Math.round((earnedPoints / totalPoints) * 100) : 0;
@@ -226,14 +220,14 @@ export function StudentLeaderboard() {
           id: studentData.id,
           full_name: studentData.full_name,
           email: studentData.email,
-          grade: studentData.class_students[0]?.class.grade || studentGrade,
+          grade: (studentData as any).class_students?.[0]?.class?.grade || studentGrade,
           total_assignments: totalAssignments,
           completed_assignments: completedAssignments,
           total_points: totalPoints,
           earned_points: earnedPoints,
           average_score: averageScore,
           rank: 0, // Will be calculated after sorting
-          class_name: studentData.class_students[0]?.class.name,
+          class_name: (studentData as any).class_students?.[0]?.class?.name,
           is_current_student: studentData.id === student.id
         });
       }
@@ -311,6 +305,11 @@ export function StudentLeaderboard() {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
+  // Reset pagination when filters change (but not when data loads)
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchTerm, selectedGrade]);
+
   const getRankIcon = (rank: number) => {
     if (rank === 1) return <IconTrophy size={20} color="#FFD700" />;
     if (rank === 2) return <IconMedal size={20} color="#C0C0C0" />;
@@ -327,13 +326,13 @@ export function StudentLeaderboard() {
   };
 
   if (loading) {
-    return <LoadingSpinner message="Memuat data leaderboard..." />;
+    return <LoadingSpinner message="Memuat data leaderboard... Mohon tunggu sebentar" />;
   }
 
   if (error) {
     return (
       <Container size="xl" py="xl">
-        <Alert color="red" title="Error" icon={<IconInfoCircle size={16} />}>
+        <Alert color="red" title="Error" icon={<IconTarget size={16} />}>
           {error}
         </Alert>
       </Container>
@@ -348,6 +347,7 @@ export function StudentLeaderboard() {
           <div>
             <Title order={1}>Leaderboard</Title>
             <Text c="dimmed">Peringkat nilai siswa di tingkat {formatGrade(students[0]?.grade || '10')}</Text>
+            <Text size="xs" c="dimmed">Menampilkan 100 siswa terbaik</Text>
           </div>
           <ActionIcon
             variant="light"
@@ -485,7 +485,7 @@ export function StudentLeaderboard() {
                 <Table style={{ minWidth: 800 }}>
                   <Table.Thead>
                     <Table.Tr>
-                      <Table.Th width={80}>Peringkat</Table.Th>
+                      <Table.Th style={{ width: 80 }}>Peringkat</Table.Th>
                       <Table.Th>Siswa</Table.Th>
                       <Table.Th>Kelas</Table.Th>
                       <Table.Th>Tugas</Table.Th>
@@ -566,7 +566,10 @@ export function StudentLeaderboard() {
 
             {/* Pagination */}
             {totalPages > 1 && (
-              <Group justify="center" mt="md">
+              <Group justify="space-between" mt="md">
+                <Text size="sm" c="dimmed">
+                  Menampilkan {startIndex + 1}-{Math.min(endIndex, filteredStudents.length)} dari {filteredStudents.length} siswa
+                </Text>
                 <Pagination
                   total={totalPages}
                   value={currentPage}

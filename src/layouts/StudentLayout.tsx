@@ -8,6 +8,7 @@ import {
   LayoutDashboard,
   BookOpen,
   Trophy,
+  Newspaper,
   LogOut,
   User,
 } from 'lucide-react';
@@ -28,6 +29,7 @@ export function StudentLayout() {
     { icon: LayoutDashboard, label: 'Dashboard', path: '/student/dashboard' },
     { icon: BookOpen, label: 'Kelas & Tugas', path: '/student/classroom' },
     { icon: Trophy, label: 'Leaderboard', path: '/student/leaderboard' },
+    { icon: Newspaper, label: 'Newsroom', path: '/student/newsroom' },
   ];
 
   // Show loading or error if student data is not available

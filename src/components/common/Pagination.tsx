@@ -227,7 +227,7 @@ export function Pagination({
               <Text size="sm">Go to:</Text>
               <NumberInput
                 value={pageInput}
-                onChange={setPageInput}
+                onChange={(value) => setPageInput(typeof value === 'number' ? value : parseInt(value) || 1)}
                 onKeyDown={(event) => {
                   if (event.key === 'Enter') {
                     handlePageInputChange(pageInput);
@@ -264,6 +264,15 @@ export function usePagination<T>(
   const startIndex = (currentPage - 1) * itemsPerPage;
   const endIndex = startIndex + itemsPerPage;
   const paginatedData = data.slice(startIndex, endIndex);
+
+  // Adjust current page when data changes and current page is out of bounds
+  useEffect(() => {
+    if (totalPages > 0 && currentPage > totalPages) {
+      setCurrentPage(totalPages);
+    } else if (totalPages === 0 && currentPage !== 1) {
+      setCurrentPage(1);
+    }
+  }, [data.length, itemsPerPage, totalPages, currentPage]);
 
   const handlePageChange = (page: number) => {
     if (page >= 1 && page <= totalPages) {

@@ -47,6 +47,9 @@ export function ClassCard({
             <Badge color={getGradeColor(classData.grade)} size="sm">
               {formatGrade(classData.grade)}
             </Badge>
+            <Text fw={600} size="md" lineClamp={1}>
+              {classData.name}
+            </Text>
           </Group>
           
           {showActions && (
@@ -85,9 +88,6 @@ export function ClassCard({
 
       <Stack gap="sm" mt="md">
         <div>
-          <Text fw={600} size="lg" lineClamp={1}>
-            {classData.name}
-          </Text>
           <Text size="sm" c="dimmed" lineClamp={2}>
             {classData.description || 'Tidak ada deskripsi'}
           </Text>

@@ -29,7 +29,7 @@ export const gradeService = {
 
     // Get all submissions for these assignments
     const assignmentIds = assignments.map(a => a.id);
-    const studentIds = classStudents.map(cs => cs.student[0]?.id || cs.student.id);
+    const studentIds = classStudents.map((cs: any) => cs.student?.id);
 
     const { data: submissions, error: submissionsError } = await supabase
       .from('submissions')
@@ -55,8 +55,8 @@ export const gradeService = {
     };
 
     // Initialize grades matrix
-    classStudents.forEach(cs => {
-      const studentId = cs.student[0]?.id || cs.student.id;
+    classStudents.forEach((cs: any) => {
+      const studentId = cs.student?.id;
       gradebook.grades[studentId] = {};
       assignments.forEach(assignment => {
         gradebook.grades[studentId][assignment.id] = {
@@ -121,7 +121,7 @@ export const gradeService = {
 
     // Get all submissions
     const assignmentIds = assignments.map(a => a.id);
-    const studentIds = [...new Set(classStudents.map(cs => cs.student[0]?.id || cs.student.id))];
+    const studentIds = [...new Set(classStudents.map((cs: any) => cs.student?.id))];
 
     const { data: submissions, error: submissionsError } = await supabase
       .from('submissions')
@@ -199,13 +199,13 @@ export const gradeService = {
 
     if (error) throw error;
 
-    const gradedSubmissions = submissions.filter(s => s.status === 'graded');
-    const totalStudents = new Set(submissions.map(s => s.student_id)).size;
-    const submittedCount = submissions.filter(s => s.status !== 'pending').length;
+    const gradedSubmissions = submissions.filter((s: any) => s.status === 'graded');
+    const totalStudents = new Set(submissions.map((s: any) => s.student_id)).size;
+    const submittedCount = submissions.filter((s: any) => s.status !== 'pending').length;
     const gradedCount = gradedSubmissions.length;
 
-    const grades = gradedSubmissions.map(s => s.grade || 0);
-    const maxGrades = gradedSubmissions.map(s => (s.assignment as any).total_points);
+    const grades = gradedSubmissions.map((s: any) => s.grade || 0);
+    const maxGrades = gradedSubmissions.map((s: any) => (s.assignment as any).total_points);
     
     const averageGrade = grades.length > 0 ? grades.reduce((sum, g) => sum + g, 0) / grades.length : 0;
     const averagePercentage = maxGrades.length > 0 ? 

@@ -18,11 +18,12 @@ import {
   IconCalendar,
   IconUsers,
   IconClipboardList,
+  IconSpeakerphone,
 } from '@tabler/icons-react';
-import { useAuth } from '../../contexts/AuthContext';
 import { classService } from '../../services/classService';
 import { assignmentService } from '../../services/assignmentService';
 import { attendanceService } from '../../services/attendanceService';
+import { newsroomService } from '../../services/newsroomService';
 import { LoadingSpinner, EmptyState } from '../../components';
 import { formatGrade } from '../../utils/romanNumerals';
 import { useButtonHandler } from '../../utils/debounce';
@@ -30,8 +31,6 @@ import { useButtonHandler } from '../../utils/debounce';
 export function ClassDetail() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const { user } = useAuth();
-  // const teacher = user!;
   
   const [loading, setLoading] = useState(true);
   const [classData, setClassData] = useState<any>(null);
@@ -39,7 +38,8 @@ export function ClassDetail() {
     students: 0,
     assignments: 0,
     attendance: 0,
-    submissions: 0
+    submissions: 0,
+    announcements: 0
   });
   const { loading: buttonLoading, handleClick } = useButtonHandler();
 
@@ -56,10 +56,11 @@ export function ClassDetail() {
       setLoading(true);
       
       // Load class data and statistics in parallel
-      const [classInfo, assignmentStats, attendanceStats] = await Promise.all([
+      const [classInfo, assignmentStats, attendanceStats, announcements] = await Promise.all([
         classService.getClassById(id),
         assignmentService.getClassAssignmentStats(id),
-        attendanceService.getClassAttendanceStats(id)
+        attendanceService.getClassAttendanceStats(id),
+        newsroomService.getItemsByType('announcement')
       ]);
 
       setClassData(classInfo);
@@ -70,7 +71,8 @@ export function ClassDetail() {
         students: studentCount,
         assignments: assignmentStats.totalAssignments,
         attendance: attendanceStats.totalSessions,
-        submissions: assignmentStats.totalSubmissions
+        submissions: assignmentStats.totalSubmissions,
+        announcements: announcements.length
       });
     } catch (error) {
       console.error('Error loading class:', error);
@@ -225,10 +227,33 @@ export function ClassDetail() {
             </Stack>
           </Paper>
           
+          <Paper p="md" withBorder style={{ cursor: 'pointer' }} onClick={() => handleNavigation(`/teacher/announcements`, 'announcements')}>
+            <Stack gap="md">
+              <Group gap="md">
+                <IconSpeakerphone size={32} color="var(--mantine-color-purple-6)" />
+                <div>
+                  <Text size="lg" fw={600}>{stats.announcements}</Text>
+                  <Text size="sm" c="dimmed">Pengumuman</Text>
+                </div>
+              </Group>
+              <Button
+                leftSection={<IconSpeakerphone size={16} />}
+                variant="light"
+                color="purple"
+                size="sm"
+                loading={buttonLoading === 'announcements'}
+                disabled={buttonLoading !== null}
+                fullWidth
+              >
+                Kelola Pengumuman
+              </Button>
+            </Stack>
+          </Paper>
+          
           <Paper p="md" withBorder>
             <Stack gap="md">
               <Group gap="md">
-                <IconClipboardList size={32} color="var(--mantine-color-purple-6)" />
+                <IconClipboardList size={32} color="var(--mantine-color-gray-6)" />
                 <div>
                   <Text size="lg" fw={600}>{stats.submissions}</Text>
                   <Text size="sm" c="dimmed">Total Submit</Text>

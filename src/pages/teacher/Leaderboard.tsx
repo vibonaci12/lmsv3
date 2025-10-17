@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import {
   Container,
   Title,
@@ -69,128 +69,38 @@ export function Leaderboard() {
   
   const [loading, setLoading] = useState(true);
   const [students, setStudents] = useState<StudentScore[]>([]);
-  const [filteredStudents, setFilteredStudents] = useState<StudentScore[]>([]);
-  const [gradeStats, setGradeStats] = useState<GradeStats[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedGrade, setSelectedGrade] = useState<string>('');
   const [activeTab, setActiveTab] = useState<string>('overall');
   
-  // Pagination
-  const {
-    currentPage,
-    itemsPerPage,
-    totalItems,
-    totalPages,
-    paginatedData: paginatedStudents,
-    handlePageChange,
-    handleItemsPerPageChange,
-    resetPagination
-  } = usePagination(filteredStudents, 10, 1);
-
   useEffect(() => {
     loadData();
   }, []);
 
-  useEffect(() => {
-    filterStudents();
-    resetPagination();
-  }, [students, searchTerm, selectedGrade, resetPagination]);
+  // Memoized filtered students
+  const filteredStudents = useMemo(() => {
+    let filtered = students;
 
-  const loadData = async () => {
-    try {
-      setLoading(true);
-      
-      // Load student scores with rankings
-      const { data: scoresData, error: scoresError } = await supabase
-        .from('students')
-        .select(`
-          id,
-          full_name,
-          email,
-          birth_date,
-          class_students!inner(
-            class:classes(
-              id,
-              name,
-              grade
-            )
-          )
-        `)
-        .eq('is_active', true);
-
-      if (scoresError) throw scoresError;
-
-      // Get submission data for each student
-      const studentScores: StudentScore[] = [];
-      
-      for (const student of scoresData || []) {
-        const { data: submissions, error: submissionsError } = await supabase
-          .from('submissions')
-          .select(`
-            id,
-            grade,
-            assignment:assignments(
-              total_points,
-              assignment_type
-            )
-          `)
-          .eq('student_id', student.id)
-          .eq('status', 'graded');
-
-        if (submissionsError) continue;
-
-        const { data: allAssignments, error: assignmentsError } = await supabase
-          .from('assignments')
-          .select('id, total_points')
-          .or(`class_id.in.(${student.class_students.map((cs: any) => cs.class.id).join(',')}),target_grade.eq.${student.class_students[0]?.class.grade}`);
-
-        if (assignmentsError) continue;
-
-        const totalPoints = allAssignments?.reduce((sum, assignment) => sum + assignment.total_points, 0) || 0;
-        const earnedPoints = submissions?.reduce((sum, submission) => sum + (submission.grade || 0), 0) || 0;
-        const totalAssignments = allAssignments?.length || 0;
-        const completedAssignments = submissions?.length || 0;
-        const averageScore = totalAssignments > 0 ? Math.round((earnedPoints / totalPoints) * 100) : 0;
-
-        studentScores.push({
-          id: student.id,
-          full_name: student.full_name,
-          email: student.email,
-          grade: student.class_students[0]?.class.grade || '10',
-          total_assignments: totalAssignments,
-          completed_assignments: completedAssignments,
-          total_points: totalPoints,
-          earned_points: earnedPoints,
-          average_score: averageScore,
-          rank: 0, // Will be calculated after sorting
-          class_name: student.class_students[0]?.class.name
-        });
-      }
-
-      // Sort by average score and assign ranks
-      studentScores.sort((a, b) => b.average_score - a.average_score);
-      studentScores.forEach((student, index) => {
-        student.rank = index + 1;
-      });
-
-      setStudents(studentScores);
-      calculateGradeStats(studentScores);
-    } catch (error) {
-      console.error('Error loading leaderboard data:', error);
-      notifications.show({
-        title: 'Error',
-        message: 'Gagal memuat data leaderboard',
-        color: 'red',
-      });
-    } finally {
-      setLoading(false);
+    if (searchTerm) {
+      filtered = filtered.filter(student =>
+        student.full_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        student.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        student.class_name?.toLowerCase().includes(searchTerm.toLowerCase())
+      );
     }
-  };
 
-  const calculateGradeStats = (studentScores: StudentScore[]) => {
+    if (selectedGrade) {
+      filtered = filtered.filter(student => student.grade === selectedGrade);
+    }
+
+    return filtered;
+  }, [students, searchTerm, selectedGrade]);
+
+  // Memoized grade stats
+  const gradeStats = useMemo(() => {
     const gradeMap = new Map<string, StudentScore[]>();
-    
-    studentScores.forEach(student => {
+
+    filteredStudents.forEach(student => {
       if (!gradeMap.has(student.grade)) {
         gradeMap.set(student.grade, []);
       }
@@ -214,25 +124,156 @@ export function Leaderboard() {
     });
 
     stats.sort((a, b) => parseInt(a.grade) - parseInt(b.grade));
-    setGradeStats(stats);
-  };
+    return stats;
+  }, [filteredStudents]);
 
-  const filterStudents = () => {
-    let filtered = students;
+  // Pagination
+  const {
+    currentPage,
+    itemsPerPage,
+    totalItems,
+    totalPages,
+    paginatedData: paginatedStudents,
+    handlePageChange,
+    handleItemsPerPageChange,
+    resetPagination
+  } = usePagination(filteredStudents, 10, 1);
 
-    if (searchTerm) {
-      filtered = filtered.filter(student =>
-        student.full_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        student.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        student.class_name?.toLowerCase().includes(searchTerm.toLowerCase())
-      );
+  useEffect(() => {
+    resetPagination();
+  }, [filteredStudents.length]);
+
+  const loadData = async () => {
+    try {
+      setLoading(true);
+
+      // Load all students with their class info in one query
+      const { data: studentsData, error: studentsError } = await supabase
+        .from('students')
+        .select(`
+          id,
+          full_name,
+          email,
+          class_students!inner(
+            class:classes(
+              id,
+              name,
+              grade
+            )
+          )
+        `)
+        .eq('is_active', true);
+
+      if (studentsError) throw studentsError;
+
+      // Get all assignments in one query
+      const { data: allAssignments, error: assignmentsError } = await supabase
+        .from('assignments')
+        .select('id, total_points, class_id, target_grade');
+
+      if (assignmentsError) throw assignmentsError;
+
+      // Get all graded submissions in one query
+      const { data: allSubmissions, error: submissionsError } = await supabase
+        .from('submissions')
+        .select(`
+          id,
+          grade,
+          student_id,
+          assignment:assignments(
+            total_points,
+            assignment_type,
+            class_id,
+            target_grade
+          )
+        `)
+        .eq('status', 'graded');
+
+      if (submissionsError) throw submissionsError;
+
+      // Create maps for efficient lookups
+      const assignmentsMap = new Map();
+      const submissionsMap = new Map();
+
+      // Group assignments by class_id and target_grade
+      allAssignments?.forEach(assignment => {
+        const key = assignment.class_id || `grade_${assignment.target_grade}`;
+        if (!assignmentsMap.has(key)) {
+          assignmentsMap.set(key, []);
+        }
+        assignmentsMap.get(key).push(assignment);
+      });
+
+      // Group submissions by student_id
+      allSubmissions?.forEach(submission => {
+        if (!submissionsMap.has(submission.student_id)) {
+          submissionsMap.set(submission.student_id, []);
+        }
+        submissionsMap.get(submission.student_id).push(submission);
+      });
+
+      // Process student scores efficiently
+      const studentScores: StudentScore[] = [];
+
+      for (const student of studentsData || []) {
+        const studentClassIds = student.class_students.map((cs: any) => cs.class.id);
+        const studentGrade = (student.class_students[0] as any)?.class?.grade || '10';
+
+        // Get relevant assignments for this student
+        const relevantAssignments = [];
+        studentClassIds.forEach(classId => {
+          const classAssignments = assignmentsMap.get(classId) || [];
+          relevantAssignments.push(...classAssignments);
+        });
+        const gradeAssignments = assignmentsMap.get(`grade_${studentGrade}`) || [];
+        relevantAssignments.push(...gradeAssignments);
+
+        // Remove duplicates
+        const uniqueAssignments = relevantAssignments.filter((assignment, index, self) =>
+          index === self.findIndex(a => a.id === assignment.id)
+        );
+
+        // Get student's submissions
+        const studentSubmissions = submissionsMap.get(student.id) || [];
+
+        const totalPoints = uniqueAssignments.reduce((sum, assignment) => sum + assignment.total_points, 0);
+        const earnedPoints = studentSubmissions.reduce((sum: number, submission: any) => sum + (submission.grade || 0), 0);
+        const totalAssignments = uniqueAssignments.length;
+        const completedAssignments = studentSubmissions.length;
+        const averageScore = totalAssignments > 0 ? Math.round((earnedPoints / totalPoints) * 100) : 0;
+
+        studentScores.push({
+          id: student.id,
+          full_name: student.full_name,
+          email: student.email,
+          grade: studentGrade,
+          total_assignments: totalAssignments,
+          completed_assignments: completedAssignments,
+          total_points: totalPoints,
+          earned_points: earnedPoints,
+          average_score: averageScore,
+          rank: 0, // Will be calculated after sorting
+          class_name: (student.class_students[0] as any)?.class?.name
+        });
+      }
+
+      // Sort by average score and assign ranks
+      studentScores.sort((a, b) => b.average_score - a.average_score);
+      studentScores.forEach((student, index) => {
+        student.rank = index + 1;
+      });
+
+      setStudents(studentScores);
+    } catch (error) {
+      console.error('Error loading leaderboard data:', error);
+      notifications.show({
+        title: 'Error',
+        message: 'Gagal memuat data leaderboard',
+        color: 'red',
+      });
+    } finally {
+      setLoading(false);
     }
-
-    if (selectedGrade) {
-      filtered = filtered.filter(student => student.grade === selectedGrade);
-    }
-
-    setFilteredStudents(filtered);
   };
 
   const getRankIcon = (rank: number) => {
@@ -388,13 +429,13 @@ export function Leaderboard() {
               <Table style={{ minWidth: 800 }}>
                 <Table.Thead>
                   <Table.Tr>
-                    <Table.Th width={80}>Peringkat</Table.Th>
+                    <Table.Th w={80}>Peringkat</Table.Th>
                     <Table.Th>Siswa</Table.Th>
                     <Table.Th>Kelas</Table.Th>
                     <Table.Th>Tugas</Table.Th>
                     <Table.Th>Nilai</Table.Th>
                     <Table.Th>Progress</Table.Th>
-                    <Table.Th width={100}></Table.Th>
+                    <Table.Th w={100}></Table.Th>
                   </Table.Tr>
                 </Table.Thead>
                 <Table.Tbody>

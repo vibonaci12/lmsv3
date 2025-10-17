@@ -6,7 +6,8 @@ import {
   IconBook,
   IconClipboardList,
   IconTrophy,
-  IconUser
+  IconUser,
+  IconNews
 } from '@tabler/icons-react';
 
 interface NavItem {
@@ -18,7 +19,8 @@ interface NavItem {
 const studentNavItems: NavItem[] = [
   { icon: IconHome, label: 'Dashboard', path: '/student/dashboard' },
   { icon: IconBook, label: 'Kelas & Tugas', path: '/student/classroom' },
-  { icon: IconClipboardList, label: 'Leaderboard', path: '/student/leaderboard' },
+  { icon: IconTrophy, label: 'Leaderboard', path: '/student/leaderboard' },
+  { icon: IconNews, label: 'Newsroom', path: '/student/newsroom' },
   { icon: IconUser, label: 'Profil', path: '/student/profile' },
 ];
 
@@ -27,6 +29,7 @@ const teacherNavItems: NavItem[] = [
   { icon: IconBook, label: 'Kelas', path: '/teacher/classes' },
   { icon: IconClipboardList, label: 'Tugas', path: '/teacher/assignments' },
   { icon: IconTrophy, label: 'Leaderboard', path: '/teacher/leaderboard' },
+  { icon: IconNews, label: 'Newsroom', path: '/teacher/newsroom' },
 ];
 
 interface BottomNavigationProps {
@@ -85,9 +88,10 @@ export function BottomNavigation({ role }: BottomNavigationProps) {
         style={{
           position: 'absolute',
           inset: 0,
-          background: 'rgba(255, 255, 255, 0.9)',
+          background: 'rgba(255, 255, 255, 0.95)',
           backdropFilter: 'blur(20px)',
-          borderTop: '1px solid rgba(229, 231, 235, 0.5)'
+          borderTop: '1px solid rgba(229, 231, 235, 0.5)',
+          borderRadius: '20px 20px 0 0'
         }}
         initial={{ y: 100, opacity: 0 }}
         animate={{ y: 0, opacity: 1 }}
@@ -116,12 +120,14 @@ export function BottomNavigation({ role }: BottomNavigationProps) {
                 flexDirection: 'column',
                 alignItems: 'center',
                 justifyContent: 'center',
-                padding: '12px',
-                borderRadius: '24px',
+                padding: '12px 16px',
+                borderRadius: '12px',
                 border: 'none',
                 background: 'transparent',
                 cursor: 'pointer',
-                transition: 'all 0.3s ease'
+                transition: 'all 0.3s ease',
+                minWidth: '60px',
+                minHeight: '60px'
               }}
               whileTap={{ scale: 0.9 }}
               whileHover={{ scale: 1.05 }}
@@ -134,8 +140,8 @@ export function BottomNavigation({ role }: BottomNavigationProps) {
                       position: 'absolute',
                       inset: 0,
                       background: 'linear-gradient(135deg, #3b82f6, #1d4ed8)',
-                      borderRadius: '24px',
-                      boxShadow: '0 10px 25px rgba(59, 130, 246, 0.3)'
+                      borderRadius: '12px',
+                      boxShadow: '0 8px 20px rgba(59, 130, 246, 0.3)'
                     }}
                     layoutId="liquidTab"
                     initial={{ 
@@ -146,7 +152,7 @@ export function BottomNavigation({ role }: BottomNavigationProps) {
                     animate={{ 
                       opacity: 1, 
                       scale: 1,
-                      borderRadius: "24px",
+                      borderRadius: "12px",
                       transition: {
                         type: "spring",
                         stiffness: 260,
@@ -175,7 +181,7 @@ export function BottomNavigation({ role }: BottomNavigationProps) {
                       position: 'absolute',
                       inset: 0,
                       background: 'rgba(96, 165, 250, 0.3)',
-                      borderRadius: '24px',
+                      borderRadius: '12px',
                       filter: 'blur(4px)'
                     }}
                     initial={{ opacity: 0, scale: 0.8 }}
@@ -225,28 +231,6 @@ export function BottomNavigation({ role }: BottomNavigationProps) {
                 <Icon size={22} />
               </motion.div>
 
-              {/* Label with liquid animation */}
-              <motion.span
-                style={{
-                  position: 'relative',
-                  zIndex: 10,
-                  fontSize: '12px',
-                  fontWeight: 600,
-                  marginTop: '4px'
-                }}
-                animate={{
-                  color: isActive ? '#ffffff' : '#6b7280',
-                  opacity: isActive ? 1 : 0.6,
-                  y: isActive ? 0 : 2,
-                }}
-                transition={{
-                  type: "spring",
-                  stiffness: 400,
-                  damping: 25
-                }}
-              >
-                {item.label}
-              </motion.span>
 
               {/* Liquid ripple effect */}
               <AnimatePresence>
@@ -255,7 +239,7 @@ export function BottomNavigation({ role }: BottomNavigationProps) {
                     style={{
                       position: 'absolute',
                       inset: 0,
-                      borderRadius: '24px',
+                      borderRadius: '12px',
                       border: '2px solid rgba(147, 197, 253, 0.5)'
                     }}
                     initial={{ scale: 0, opacity: 0 }}

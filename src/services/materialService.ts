@@ -2,19 +2,116 @@ import { supabase } from '../lib/supabase';
 import { Material } from '../types';
 
 export const materialService = {
+  // Get materials by class (for class-specific materials)
   async getMaterialsByClass(classId: string) {
     const { data, error } = await supabase
       .from('materials')
       .select(`
         *,
-        created_by_teacher:teachers!materials_created_by_fkey(full_name),
-        updated_by_teacher:teachers!materials_updated_by_fkey(full_name)
+        teachers!materials_created_by_fkey(full_name),
+        class:classes(name, grade)
       `)
       .eq('class_id', classId)
+      .eq('material_type', 'class')
       .order('created_at', { ascending: false });
 
     if (error) throw error;
-    return data;
+    
+    // Transform data to match interface
+    const transformedData = (data || []).map(item => ({
+      ...item,
+      created_by_teacher: item.teachers,
+      class_info: item.class
+    }));
+    
+    return transformedData;
+  },
+
+  // Get materials by grade (for grade-based materials)
+  async getMaterialsByGrade(grade: string) {
+    const { data, error } = await supabase
+      .from('materials')
+      .select(`
+        *,
+        teachers!materials_created_by_fkey(full_name)
+      `)
+      .eq('target_grade', grade)
+      .eq('material_type', 'grade')
+      .order('created_at', { ascending: false });
+
+    if (error) throw error;
+    
+    // Transform data to match interface
+    const transformedData = (data || []).map(item => ({
+      ...item,
+      created_by_teacher: item.teachers
+    }));
+    
+    return transformedData;
+  },
+
+  // Get all materials for a student (both class and grade-based)
+  async getMaterialsForStudent(studentId: string) {
+    // Get student's grade from their enrolled classes
+    const { data: studentClasses, error: classError } = await supabase
+      .from('class_students')
+      .select(`
+        class_id,
+        class:classes(grade)
+      `)
+      .eq('student_id', studentId);
+
+    if (classError) throw classError;
+
+    const grades = [...new Set(studentClasses?.map((sc: any) => sc.class?.grade).filter(Boolean))];
+    const classIds = studentClasses?.map(sc => sc.class_id) || [];
+
+    // Get class-based materials
+    const { data: classMaterials, error: classMaterialsError } = await supabase
+      .from('materials')
+      .select(`
+        *,
+        teachers!materials_created_by_fkey(full_name),
+        class:classes(name, grade)
+      `)
+      .in('class_id', classIds)
+      .eq('material_type', 'class')
+      .order('created_at', { ascending: false });
+
+    if (classMaterialsError) throw classMaterialsError;
+
+    // Get grade-based materials
+    const { data: gradeMaterials, error: gradeMaterialsError } = await supabase
+      .from('materials')
+      .select(`
+        *,
+        teachers!materials_created_by_fkey(full_name)
+      `)
+      .in('target_grade', grades)
+      .eq('material_type', 'grade')
+      .order('created_at', { ascending: false });
+
+    if (gradeMaterialsError) throw gradeMaterialsError;
+
+    // Combine and transform data
+    const allMaterials = [
+      ...(classMaterials || []).map(item => ({
+        ...item,
+        created_by_teacher: item.teachers,
+        class_info: item.class,
+        material_type: 'class'
+      })),
+      ...(gradeMaterials || []).map(item => ({
+        ...item,
+        created_by_teacher: item.teachers,
+        material_type: 'grade'
+      }))
+    ];
+
+    // Sort by creation date
+    allMaterials.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+
+    return allMaterials;
   },
 
   async getMaterialById(materialId: string) {
@@ -114,7 +211,7 @@ export const materialService = {
     return data;
   },
 
-  async deleteMaterial(materialId: string, deletedBy: string) {
+  async deleteMaterial(materialId: string, deletedBy?: string) {
     const { data: material } = await supabase
       .from('materials')
       .select('title')
@@ -128,13 +225,15 @@ export const materialService = {
 
     if (error) throw error;
 
-    await supabase.from('activity_logs').insert({
-      teacher_id: deletedBy,
-      action: 'delete',
-      entity_type: 'material',
-      entity_id: materialId,
-      description: `Deleted material ${material?.title || ''}`,
-    });
+    if (deletedBy) {
+      await supabase.from('activity_logs').insert({
+        teacher_id: deletedBy,
+        action: 'delete',
+        entity_type: 'material',
+        entity_id: materialId,
+        description: `Deleted material ${material?.title || ''}`,
+      });
+    }
   },
 
   async uploadFile(file: File, bucket: string = 'materials'): Promise<string> {
@@ -192,17 +291,63 @@ export const materialService = {
     return '📄';
   },
 
+  // Get all materials (for teachers)
   async getAllMaterials() {
     const { data, error } = await supabase
       .from('materials')
       .select(`
         *,
-        class:classes(name, grade, subject),
-        created_by_teacher:teachers!materials_created_by_fkey(full_name)
+        class:classes(name, grade),
+        teachers!materials_created_by_fkey(full_name)
       `)
       .order('created_at', { ascending: false });
 
     if (error) throw error;
-    return data;
+    
+    // Transform data to match interface
+    const transformedData = (data || []).map(item => ({
+      ...item,
+      created_by_teacher: item.teachers,
+      class_info: item.class
+    }));
+    
+    return transformedData;
   },
+
+  // Create new material
+  async createMaterial(material: {
+    title: string;
+    description?: string;
+    file_url: string;
+    file_name: string;
+    file_type: string;
+    file_size: number;
+    material_type: 'class' | 'grade';
+    class_id?: string;
+    target_grade?: string;
+  }, createdBy: string) {
+    const { data, error } = await supabase
+      .from('materials')
+      .insert({
+        ...material,
+        created_by: createdBy,
+        updated_by: createdBy,
+      })
+      .select(`
+        *,
+        teachers!materials_created_by_fkey(full_name),
+        class:classes(name, grade)
+      `)
+      .single();
+
+    if (error) throw error;
+    
+    // Transform data to match interface
+    return {
+      ...data,
+      created_by_teacher: data.teachers,
+      class_info: data.class
+    };
+  },
+
 };

@@ -10,6 +10,7 @@ import {
   BookOpen,
   ClipboardList,
   FileText,
+  Newspaper,
   LogOut,
   User,
 } from 'lucide-react';
@@ -32,6 +33,7 @@ export function TeacherLayout() {
     { icon: BookOpen, label: 'Kelas', path: '/teacher/classes' },
     { icon: ClipboardList, label: 'Tugas', path: '/teacher/assignments' },
     { icon: FileText, label: 'Leaderboard', path: '/teacher/leaderboard' },
+    { icon: Newspaper, label: 'Newsroom', path: '/teacher/newsroom' },
   ];
 
   return (

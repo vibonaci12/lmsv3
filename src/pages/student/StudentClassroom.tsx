@@ -18,7 +18,7 @@ import {
   ThemeIcon,
   Table,
   Avatar,
-  FileInput,
+  TextInput,
 } from '@mantine/core';
 import { 
   IconBook,
@@ -42,6 +42,7 @@ import { LoadingSpinner, EmptyState, Pagination, usePagination } from '../../com
 import { notifications } from '@mantine/notifications';
 import { formatGrade } from '../../utils/romanNumerals';
 import { supabase } from '../../lib/supabase';
+import { materialService } from '../../services/materialService';
 import dayjs from 'dayjs';
 
 interface ClassInfo {
@@ -83,12 +84,20 @@ interface Material {
   id: string;
   title: string;
   description?: string;
-  type: 'document' | 'video' | 'presentation' | 'link';
-  url?: string;
-  file_name?: string;
+  file_url: string;
+  file_name: string;
+  file_type: string;
+  file_size: number;
+  material_type: 'class' | 'grade';
+  class_id?: string;
+  target_grade?: string;
   created_at: string;
-  teacher: {
+  created_by_teacher?: {
     full_name: string;
+  };
+  class_info?: {
+    name: string;
+    grade: string;
   };
 }
 
@@ -136,6 +145,14 @@ export function StudentClassroom() {
   if (authLoading || !student) {
     return <LoadingSpinner message="Memuat data kelas..." />;
   }
+
+  const formatFileSize = (bytes: number) => {
+    if (bytes === 0) return '0 Bytes';
+    const k = 1024;
+    const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+  };
   
   const [loading, setLoading] = useState(true);
   const [classes, setClasses] = useState<ClassInfo[]>([]);
@@ -158,7 +175,7 @@ export function StudentClassroom() {
   // Assignment submission states
   const [submissionModal, setSubmissionModal] = useState(false);
   const [selectedAssignment, setSelectedAssignment] = useState<Assignment | null>(null);
-  const [submissionFile, setSubmissionFile] = useState<File | null>(null);
+  const [submissionDriveLink, setSubmissionDriveLink] = useState('');
   const [submissionText, setSubmissionText] = useState('');
   const [submitting, setSubmitting] = useState(false);
 
@@ -238,27 +255,39 @@ export function StudentClassroom() {
           teacherData = teacherDataResult;
         }
 
+        // Skip this class if teacher data is invalid
+        if (!teacherData || !teacherData.id) {
+          console.warn('Skipping class due to invalid teacher data:', classData.id);
+          continue;
+        }
+
         // Get assignment statistics
-        const { data: assignments, error: assignmentsError } = await supabase
+        let assignments: any[] = [];
+        const { data: assignmentsData, error: assignmentsError } = await supabase
           .from('assignments')
           .select('id, deadline')
           .or(`class_id.eq.${classData.id},target_grade.eq.${classData.grade}`);
 
         if (assignmentsError) {
           console.error('Error fetching assignments:', assignmentsError);
-          continue;
+          // Continue with empty assignments array instead of skipping the class
+        } else {
+          assignments = assignmentsData || [];
         }
 
         // Get student's submissions
-        const { data: submissions, error: submissionsError } = await supabase
+        let submissions: any[] = [];
+        const { data: submissionsData, error: submissionsError } = await supabase
           .from('submissions')
           .select('assignment_id, status')
           .eq('student_id', student.id)
-          .in('assignment_id', assignments?.map(a => a.id) || []);
+          .in('assignment_id', assignments.map(a => a.id));
 
         if (submissionsError) {
           console.error('Error fetching submissions:', submissionsError);
-          continue;
+          // Continue with empty submissions array instead of skipping the class
+        } else {
+          submissions = submissionsData || [];
         }
 
         const now = new Date();
@@ -268,9 +297,11 @@ export function StudentClassroom() {
 
         // Get recent announcements count
         const { data: announcements, error: announcementsError } = await supabase
-          .from('announcements')
+          .from('newsroom')
           .select('id')
-          .eq('class_id', classData.id)
+          .eq('type', 'announcement')
+          .eq('status', 'published')
+          .in('target_audience', ['all', 'students'])
           .gte('created_at', dayjs().subtract(7, 'days').toISOString());
 
         if (announcementsError) {
@@ -302,49 +333,57 @@ export function StudentClassroom() {
 
   const loadAnnouncements = async () => {
     try {
-      // Get student's class IDs
-      const { data: classStudents, error: classStudentsError } = await supabase
-        .from('class_students')
-        .select('class_id')
-        .eq('student_id', student.id);
-
-      if (classStudentsError) throw classStudentsError;
-
-      const classIds = classStudents?.map(cs => cs.class_id) || [];
-      if (classIds.length === 0) return [];
-
-      // Load announcements
+      // First, get announcements data
       const { data: announcementsData, error: announcementsError } = await supabase
-        .from('announcements')
-        .select(`
-          id,
-          title,
-          content,
-          created_at,
-          teacher_id
-        `)
-        .in('class_id', classIds)
+        .from('newsroom')
+        .select('id, title, content, created_at, created_by')
+        .eq('type', 'announcement')
+        .eq('status', 'published')
+        .in('target_audience', ['all', 'students'])
         .order('created_at', { ascending: false })
         .limit(10);
 
-      if (announcementsError) throw announcementsError;
+      if (announcementsError) {
+        console.error('Announcements query error:', announcementsError);
+        throw announcementsError;
+      }
 
-      // Get teacher info for announcements
-      const announcementsWithTeacher = await Promise.all(
-        (announcementsData || []).map(async (announcement) => {
-          const { data: teacherData } = await supabase
-            .from('teachers')
-            .select('full_name')
-            .eq('id', announcement.teacher_id)
-            .single();
+      if (!announcementsData || announcementsData.length === 0) {
+        return [];
+      }
 
-          return {
-            ...announcement,
-            teacher: teacherData || { full_name: 'Unknown Teacher' },
-            attachments: []
-          };
-        })
-      );
+      // Get teacher data separately
+      const teacherIds = [...new Set(announcementsData.map(item => item.created_by).filter(Boolean))];
+
+      const { data: teachersData, error: teachersError } = await supabase
+        .from('teachers')
+        .select('id, full_name, email')
+        .in('id', teacherIds);
+
+      if (teachersError) {
+        console.error('Error loading teachers:', teachersError);
+      }
+
+      // Create a map of teacher data
+      const teachersMap = new Map();
+      (teachersData || []).forEach(teacher => {
+        teachersMap.set(teacher.id, teacher);
+      });
+
+      // Transform data to match the expected interface
+      const announcementsWithTeacher = announcementsData.map(announcement => {
+        const teacher = teachersMap.get(announcement.created_by);
+        return {
+          id: announcement.id,
+          title: announcement.title,
+          content: announcement.content,
+          created_at: announcement.created_at,
+          teacher: {
+            full_name: teacher?.full_name || 'Unknown Teacher'
+          },
+          attachments: []
+        };
+      });
 
       return announcementsWithTeacher;
     } catch (error) {
@@ -355,63 +394,11 @@ export function StudentClassroom() {
 
   const loadMaterials = async () => {
     try {
-      // Get student's class IDs
-      const { data: classStudents, error: classStudentsError } = await supabase
-        .from('class_students')
-        .select('class_id')
-        .eq('student_id', student.id);
-
-      if (classStudentsError) throw classStudentsError;
-
-      const classIds = classStudents?.map(cs => cs.class_id) || [];
-      if (classIds.length === 0) return [];
-
-      // Load materials
-      const { data: materialsData, error: materialsError } = await supabase
-        .from('materials')
-        .select(`
-          id,
-          title,
-          description,
-          file_url,
-          file_name,
-          file_type,
-          created_at,
-          created_by
-        `)
-        .in('class_id', classIds)
-        .order('created_at', { ascending: false });
-
-      if (materialsError) throw materialsError;
-
-      // Get teacher info for materials
-      const materialsWithTeacher = await Promise.all(
-        (materialsData || []).map(async (material) => {
-          const { data: teacherData } = await supabase
-            .from('teachers')
-            .select('full_name')
-            .eq('id', material.created_by)
-            .single();
-
-          // Determine type from file_type
-          const getTypeFromFileType = (fileType: string): 'document' | 'video' | 'presentation' | 'link' => {
-            if (fileType?.includes('video')) return 'video';
-            if (fileType?.includes('pdf') || fileType?.includes('document')) return 'document';
-            if (fileType?.includes('presentation') || fileType?.includes('ppt') || fileType?.includes('pptx')) return 'presentation';
-            if (fileType?.includes('link') || fileType?.includes('url')) return 'link';
-            return 'document';
-          };
-
-          return {
-            ...material,
-            type: getTypeFromFileType(material.file_type),
-            url: material.file_url,
-            teacher: teacherData || { full_name: 'Unknown Teacher' }
-          };
-        })
-      );
-
-      return materialsWithTeacher;
+      if (!student) return [];
+      
+      // Use the new materialService to get all materials for the student
+      const materialsData = await materialService.getMaterialsForStudent(student.id);
+      return materialsData;
     } catch (error) {
       console.error('Error loading materials:', error);
       return [];
@@ -482,11 +469,15 @@ export function StudentClassroom() {
             .single();
 
           // Get class info
-          const { data: classData } = await supabase
-            .from('classes')
-            .select('id, name, grade')
-            .eq('id', assignment.class_id)
-            .single();
+          let classData = null;
+          if (assignment.class_id) {
+            const { data: classDataResult } = await supabase
+              .from('classes')
+              .select('id, name, grade')
+              .eq('id', assignment.class_id)
+              .single();
+            classData = classDataResult;
+          }
 
           // Find submission for this assignment
           const submission = submissionsData?.find(s => s.assignment_id === assignment.id);
@@ -510,24 +501,30 @@ export function StudentClassroom() {
   const handleSubmitAssignment = async () => {
     if (!selectedAssignment) return;
 
+    // Validate drive link
+    if (!submissionDriveLink.trim()) {
+      notifications.show({
+        title: 'Error',
+        message: 'Link Google Drive harus diisi',
+        color: 'red',
+      });
+      return;
+    }
+
+    // Basic validation for Google Drive link
+    if (!submissionDriveLink.includes('drive.google.com') && !submissionDriveLink.includes('docs.google.com')) {
+      notifications.show({
+        title: 'Error',
+        message: 'Harap masukkan link Google Drive yang valid',
+        color: 'red',
+      });
+      return;
+    }
+
     try {
       setSubmitting(true);
 
-      let fileUrl = '';
-      if (submissionFile) {
-        // Upload file to Supabase Storage
-        const fileExt = submissionFile.name.split('.').pop();
-        const fileName = `${selectedAssignment.id}_${student.id}_${Date.now()}.${fileExt}`;
-        
-        const { data: uploadData, error: uploadError } = await supabase.storage
-          .from('submissions')
-          .upload(fileName, submissionFile);
-
-        if (uploadError) throw uploadError;
-        fileUrl = uploadData.path;
-      }
-
-      // Create submission record
+      // Create submission record with drive link
       const { error: submissionError } = await supabase
         .from('submissions')
         .insert({
@@ -535,7 +532,7 @@ export function StudentClassroom() {
           student_id: student.id,
           status: 'submitted',
           submitted_at: new Date().toISOString(),
-          file_url: fileUrl,
+          drive_link: submissionDriveLink.trim(),
           submission_text: submissionText || null
         });
 
@@ -549,7 +546,7 @@ export function StudentClassroom() {
 
       setSubmissionModal(false);
       setSelectedAssignment(null);
-      setSubmissionFile(null);
+      setSubmissionDriveLink('');
       setSubmissionText('');
       
       // Reload assignments
@@ -654,7 +651,7 @@ export function StudentClassroom() {
             )}
 
             {/* Statistics */}
-            <SimpleGrid cols={{ base: 1, sm: 4 }}>
+            <SimpleGrid cols={{ base: 1, sm: 5 }}>
               <Paper p="md" withBorder radius="md" style={{ textAlign: 'center' }}>
                 <ThemeIcon size="xl" variant="light" color="blue" mb="sm">
                   <IconClipboardList size={24} />
@@ -685,6 +682,14 @@ export function StudentClassroom() {
                 </ThemeIcon>
                 <Text size="xl" fw={700}>{classInfo.recent_announcements}</Text>
                 <Text size="sm" c="dimmed">Pengumuman</Text>
+              </Paper>
+
+              <Paper p="md" withBorder radius="md" style={{ textAlign: 'center' }}>
+                <ThemeIcon size="xl" variant="light" color="cyan" mb="sm">
+                  <IconFileText size={24} />
+                </ThemeIcon>
+                <Text size="xl" fw={700}>{materials.length}</Text>
+                <Text size="sm" c="dimmed">Materi</Text>
               </Paper>
             </SimpleGrid>
 
@@ -940,58 +945,91 @@ export function StudentClassroom() {
                   description="Belum ada materi untuk kelas ini."
                 />
               ) : (
-                materials.map((material) => (
-                  <Paper key={material.id} p="md" withBorder radius="md">
-                    <Group gap="md">
-                      <ThemeIcon
-                        size="lg"
-                        variant="light"
-                        color={
-                          material.type === 'video' ? 'red' :
-                          material.type === 'document' ? 'blue' :
-                          material.type === 'presentation' ? 'purple' :
-                          material.type === 'link' ? 'green' :
-                          'gray'
-                        }
-                      >
-                        {material.type === 'video' ? <IconVideo size={20} /> :
-                         material.type === 'document' ? <IconFile size={20} /> :
-                         material.type === 'presentation' ? <IconPresentation size={20} /> :
-                         material.type === 'link' ? <IconExternalLink size={20} /> :
-                         <IconFile size={20} />}
-                      </ThemeIcon>
-                      <div style={{ flex: 1 }}>
-                        <Text fw={600} size="lg">{material.title}</Text>
-                        {material.description && (
-                          <Text size="sm" c="dimmed" mb="xs">
-                            {material.description}
-                          </Text>
-                        )}
-                        <Group gap="sm">
-                          <Badge variant="light" color="gray">
-                            {material.type}
-                          </Badge>
-                          <Text size="xs" c="dimmed">
-                            {dayjs(material.created_at).format('DD MMM YYYY')}
-                          </Text>
-                          <Text size="xs" c="dimmed">
-                            Oleh: {material.teacher.full_name}
-                          </Text>
-                        </Group>
-                      </div>
-                      <Button
-                        size="sm"
-                        variant="light"
-                        leftSection={<IconDownload size={16} />}
-                        component="a"
-                        href={material.url}
-                        target="_blank"
-                      >
-                        Download
-                      </Button>
-                    </Group>
-                  </Paper>
-                ))
+                materials.map((material) => {
+                  // Determine type from file_type
+                  const getTypeFromFileType = (fileType: string): 'document' | 'video' | 'presentation' | 'link' => {
+                    if (fileType?.includes('video')) return 'video';
+                    if (fileType?.includes('pdf') || fileType?.includes('document')) return 'document';
+                    if (fileType?.includes('presentation') || fileType?.includes('ppt') || fileType?.includes('pptx')) return 'presentation';
+                    if (fileType?.includes('link') || fileType?.includes('url')) return 'link';
+                    return 'document';
+                  };
+
+                  const materialType = getTypeFromFileType(material.file_type);
+                  
+                  return (
+                    <Paper key={material.id} p="md" withBorder radius="md">
+                      <Group gap="md">
+                        <ThemeIcon
+                          size="lg"
+                          variant="light"
+                          color={
+                            materialType === 'video' ? 'red' :
+                            materialType === 'document' ? 'blue' :
+                            materialType === 'presentation' ? 'purple' :
+                            materialType === 'link' ? 'green' :
+                            'gray'
+                          }
+                        >
+                          {materialType === 'video' ? <IconVideo size={20} /> :
+                           materialType === 'document' ? <IconFile size={20} /> :
+                           materialType === 'presentation' ? <IconPresentation size={20} /> :
+                           materialType === 'link' ? <IconExternalLink size={20} /> :
+                           <IconFile size={20} />}
+                        </ThemeIcon>
+                        <div style={{ flex: 1 }}>
+                          <Text fw={600} size="lg">{material.title}</Text>
+                          {material.description && (
+                            <Text size="sm" c="dimmed" mb="xs">
+                              {material.description}
+                            </Text>
+                          )}
+                          <Group gap="sm" mb="xs">
+                            <Badge variant="light" color={material.material_type === 'class' ? 'blue' : 'orange'}>
+                              {material.material_type === 'class' ? 'Kelas' : 'Tingkatan'}
+                            </Badge>
+                            {material.material_type === 'grade' && material.target_grade && (
+                              <Badge variant="light" color="gray">
+                                Kelas {material.target_grade}
+                              </Badge>
+                            )}
+                            {material.material_type === 'class' && material.class_info && (
+                              <Badge variant="light" color="gray">
+                                {material.class_info.name}
+                              </Badge>
+                            )}
+                          </Group>
+                          <Group gap="sm">
+                            <Text size="xs" c="dimmed">
+                              📁 {material.file_name}
+                            </Text>
+                            <Text size="xs" c="dimmed">
+                              📏 {formatFileSize(material.file_size)}
+                            </Text>
+                          </Group>
+                          <Group gap="sm" mt="xs">
+                            <Text size="xs" c="dimmed">
+                              📅 {dayjs(material.created_at).format('DD MMM YYYY')}
+                            </Text>
+                            <Text size="xs" c="dimmed">
+                              👤 {material.created_by_teacher?.full_name || 'Unknown Teacher'}
+                            </Text>
+                          </Group>
+                        </div>
+                        <Button
+                          size="sm"
+                          variant="light"
+                          leftSection={<IconDownload size={16} />}
+                          component="a"
+                          href={material.file_url}
+                          target="_blank"
+                        >
+                          Download
+                        </Button>
+                      </Group>
+                    </Paper>
+                  );
+                })
               )}
             </Stack>
           </Tabs.Panel>
@@ -1003,7 +1041,7 @@ export function StudentClassroom() {
           onClose={() => {
             setSubmissionModal(false);
             setSelectedAssignment(null);
-            setSubmissionFile(null);
+            setSubmissionDriveLink('');
             setSubmissionText('');
           }}
           title={selectedAssignment?.title}
@@ -1042,20 +1080,22 @@ export function StudentClassroom() {
 
               <Divider />
 
+              <TextInput
+                label="Link Google Drive *"
+                placeholder="https://drive.google.com/file/d/..."
+                value={submissionDriveLink}
+                onChange={(e) => setSubmissionDriveLink(e.target.value)}
+                leftSection={<IconExternalLink size={16} />}
+                required
+                description="Masukkan link Google Drive yang berisi file tugas Anda"
+              />
+
               <Textarea
                 label="Jawaban Teks (Opsional)"
-                placeholder="Tulis jawaban Anda di sini..."
+                placeholder="Tulis jawaban atau penjelasan tambahan di sini..."
                 value={submissionText}
                 onChange={(e) => setSubmissionText(e.target.value)}
                 minRows={4}
-              />
-
-              <FileInput
-                label="Upload File (Opsional)"
-                placeholder="Pilih file untuk dikumpulkan"
-                value={submissionFile}
-                onChange={setSubmissionFile}
-                accept=".pdf,.doc,.docx,.txt,.jpg,.jpeg,.png"
               />
 
               <Group justify="flex-end" gap="sm">
@@ -1064,7 +1104,7 @@ export function StudentClassroom() {
                   onClick={() => {
                     setSubmissionModal(false);
                     setSelectedAssignment(null);
-                    setSubmissionFile(null);
+                    setSubmissionDriveLink('');
                     setSubmissionText('');
                   }}
                 >
@@ -1073,7 +1113,7 @@ export function StudentClassroom() {
                 <Button
                   onClick={handleSubmitAssignment}
                   loading={submitting}
-                  disabled={!submissionFile && !submissionText.trim()}
+                  disabled={!submissionDriveLink.trim()}
                 >
                   Kumpulkan Tugas
                 </Button>

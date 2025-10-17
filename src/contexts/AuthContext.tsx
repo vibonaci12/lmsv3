@@ -234,7 +234,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         if (e.newValue) {
           // Session was added or updated in another tab
           console.log('Student session changed in another tab, rechecking...');
-          checkUser();
+    checkUser();
         } else {
           // Session was removed in another tab
           console.log('Student session removed in another tab');
@@ -267,8 +267,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         // Teacher logged out via Supabase
         // Only clear user if we're currently a teacher
         if (role === 'teacher') {
-          setUser(null);
-          setRole(null);
+        setUser(null);
+        setRole(null);
         }
         // Don't interfere with student sessions
       }
@@ -287,8 +287,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       clearStudentSession();
       
       const { teacher } = await authService.loginTeacher(email, password);
-      setUser(teacher);
-      setRole('teacher');
+        setUser(teacher);
+        setRole('teacher');
       
       console.log('Teacher logged in successfully:', teacher);
     } catch (error) {
@@ -307,9 +307,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       // Clear any existing teacher session when student logs in
       // This is handled by the Supabase auth state change listener
       
-      const student = await studentAuthService.loginStudent(email, password);
-      setUser(student);
-      setRole('student');
+    const student = await studentAuthService.loginStudent(email, password);
+    setUser(student);
+    setRole('student');
       saveStudentSession(student);
       
       console.log('Student logged in successfully:', student);
@@ -328,7 +328,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       
       if (currentRole === 'teacher') {
         // Teacher logout via Supabase
-        await authService.logout();
+      await authService.logout();
         console.log('Teacher logged out successfully');
       } else if (currentRole === 'student') {
         // Student logout - clear localStorage
@@ -342,18 +342,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     } catch (error) {
       console.error('Logout error:', error);
       // Even if logout fails, clear local state
-      setUser(null);
-      setRole(null);
-    }
+    setUser(null);
+    setRole(null);
+  }
   }, [role, clearStudentSession]);
 
   const contextValue: AuthContextType = {
-    user,
-    role,
-    loading,
-    loginTeacher,
-    loginStudent,
-    logout,
+        user,
+        role,
+        loading,
+        loginTeacher,
+        loginStudent,
+        logout,
     refreshSession,
   };
 

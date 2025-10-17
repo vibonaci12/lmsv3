@@ -18,10 +18,12 @@ import { ClassAttendance } from './pages/teacher/ClassAttendance';
 import { AssignmentList } from './pages/teacher/AssignmentList';
 import { AssignmentDetail } from './pages/teacher/AssignmentDetail';
 import { Leaderboard } from './pages/teacher/Leaderboard';
+import { Newsroom } from './pages/teacher/Newsroom';
 import { StudentDashboard } from './pages/student/StudentDashboard';
 import { StudentProfile } from './pages/student/StudentProfile';
 import { StudentLeaderboard } from './pages/student/StudentLeaderboard';
 import { StudentClassroom } from './pages/student/StudentClassroom';
+import { StudentNewsroom } from './pages/student/StudentNewsroom';
 
 import '@mantine/core/styles.css';
 import '@mantine/notifications/styles.css';
@@ -60,6 +62,7 @@ function App() {
                   <Route path="assignments" element={<AssignmentList />} />
                   <Route path="assignments/:id" element={<AssignmentDetail />} />
                   <Route path="leaderboard" element={<Leaderboard />} />
+                  <Route path="newsroom" element={<Newsroom />} />
                   <Route path="profile" element={<div>Profile Page</div>} />
                   <Route index element={<Navigate to="/teacher/dashboard" replace />} />
                 </Route>
@@ -76,6 +79,7 @@ function App() {
                   <Route path="dashboard" element={<StudentDashboard />} />
                   <Route path="classroom" element={<StudentClassroom />} />
                   <Route path="leaderboard" element={<StudentLeaderboard />} />
+                  <Route path="newsroom" element={<StudentNewsroom />} />
                   <Route path="profile" element={<StudentProfile />} />
                   <Route index element={<Navigate to="/student/dashboard" replace />} />
                 </Route>
