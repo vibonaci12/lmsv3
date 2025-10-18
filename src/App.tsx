@@ -8,7 +8,7 @@ import { TeacherProtectedRoute, StudentProtectedRoute } from './components/Unifi
 import { TeacherLayout } from './layouts/TeacherLayout';
 import { StudentLayout } from './layouts/StudentLayout';
 
-import { UnifiedLogin } from './pages/auth/UnifiedLogin';
+import UnifiedLogin from './pages/auth/UnifiedLogin';
 import { TeacherDashboard } from './pages/teacher/TeacherDashboard';
 import { ClassList } from './pages/teacher/ClassList';
 import { ClassDetail } from './pages/teacher/ClassDetail';

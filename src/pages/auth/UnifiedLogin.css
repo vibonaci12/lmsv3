@@ -1,0 +1,612 @@
+/* Programmer-Style Login CSS - Terminal/Console Aesthetics */
+
+@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;600;700&family=Fira+Code:wght@300;400;500;600;700&display=swap');
+
+/* Keyframe Animations */
+@keyframes terminal-blink {
+  0%, 50% { opacity: 1; }
+  51%, 100% { opacity: 0; }
+}
+
+@keyframes code-glow {
+  0%, 100% { 
+    box-shadow: 0 0 5px rgba(16, 185, 129, 0.3);
+    border-color: rgba(16, 185, 129, 0.3);
+  }
+  50% { 
+    box-shadow: 0 0 15px rgba(16, 185, 129, 0.6);
+    border-color: rgba(16, 185, 129, 0.6);
+  }
+}
+
+@keyframes matrix-rain {
+  0% { transform: translateY(-100vh); opacity: 1; }
+  100% { transform: translateY(100vh); opacity: 0; }
+}
+
+@keyframes pulse-glow {
+  0%, 100% { 
+    box-shadow: 0 0 10px rgba(59, 130, 246, 0.3);
+  }
+  50% { 
+    box-shadow: 0 0 20px rgba(59, 130, 246, 0.6);
+  }
+}
+
+@keyframes typing {
+  from { width: 0; }
+  to { width: 100%; }
+}
+
+/* Main Container */
+.programmer-container {
+  min-height: 100vh;
+  background: #0a0a0a;
+  background-image: 
+    radial-gradient(circle at 20% 80%, rgba(16, 185, 129, 0.1) 0%, transparent 50%),
+    radial-gradient(circle at 80% 20%, rgba(59, 130, 246, 0.1) 0%, transparent 50%),
+    radial-gradient(circle at 40% 40%, rgba(139, 92, 246, 0.05) 0%, transparent 50%);
+  position: relative;
+  overflow: hidden;
+  font-family: 'JetBrains Mono', 'Fira Code', monospace;
+}
+
+/* Firefox-specific root fixes */
+@-moz-document url-prefix() {
+  .programmer-container {
+    background: #0a0a0a !important;
+    background-color: #0a0a0a !important;
+  }
+  
+  /* Ensure all child elements inherit dark theme */
+  .programmer-container * {
+    color-scheme: dark !important;
+  }
+}
+
+/* Login Layout */
+.login-layout {
+  gap: 100px !important;
+  margin-top: 100px;
+  align-items: flex-start !important;
+  justify-content: center !important;
+  display: flex !important;
+  flex-direction: row !important;
+  transition: all 0.3s ease !important;
+}
+
+.terminal-panel {
+  flex: 1 1 500px !important;
+  min-width: 400px !important;
+  max-width: 500px !important;
+  order: 1 !important;
+  transition: all 0.3s ease !important;
+}
+
+.form-panel {
+  flex: 1 1 450px !important;
+  min-width: 400px !important;
+  max-width: 450px !important;
+  order: 2 !important;
+  transition: all 0.3s ease !important;
+}
+
+/* Mobile Layout - Form First */
+@media (max-width: 768px) {
+  .login-layout {
+    gap: 80px !important;
+    margin-top: 100px !important;
+    margin-bottom: 40px !important;
+    flex-direction: column !important;
+    justify-content: flex-start !important;
+    min-height: calc(100vh - 140px) !important;
+  }
+  
+  .terminal-panel {
+    order: 2 !important;
+    flex: 1 1 auto !important;
+    min-width: 100% !important;
+    max-width: 100% !important;
+    width: 100% !important;
+    margin-top: 30px !important;
+  }
+  
+  .form-panel {
+    order: 1 !important;
+    flex: 1 1 auto !important;
+    min-width: 100% !important;
+    max-width: 100% !important;
+    width: 100% !important;
+    margin-bottom: 0 !important;
+    margin-top: 0 !important;
+  }
+}
+
+/* Prevent content shifting */
+.terminal-window,
+.code-window {
+  transition: all 0.3s ease !important;
+}
+
+.terminal-content,
+.code-input,
+.terminal-text,
+.terminal-output {
+  transition: none !important;
+  transform: translateZ(0) !important;
+  backface-visibility: hidden !important;
+}
+
+/* Terminal Grid Background */
+.terminal-grid {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-image: 
+    linear-gradient(rgba(16, 185, 129, 0.03) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(16, 185, 129, 0.03) 1px, transparent 1px);
+  background-size: 20px 20px;
+  animation: pulse-glow 4s ease-in-out infinite;
+}
+
+/* Code Particles */
+.code-particles {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-image: 
+    radial-gradient(2px 2px at 20px 30px, rgba(16, 185, 129, 0.3), transparent),
+    radial-gradient(2px 2px at 40px 70px, rgba(59, 130, 246, 0.3), transparent),
+    radial-gradient(1px 1px at 90px 40px, rgba(139, 92, 246, 0.3), transparent),
+    radial-gradient(1px 1px at 130px 80px, rgba(245, 158, 11, 0.3), transparent);
+  background-repeat: repeat;
+  background-size: 200px 200px;
+  animation: matrix-rain 20s linear infinite;
+}
+
+/* Binary Rain Effect */
+.binary-rain {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.binary-rain::before {
+  content: '01010101 11001100 10101010 00110011 01010101 11001100 10101010 00110011';
+  position: absolute;
+  top: -100%;
+  left: 0;
+  width: 100%;
+  height: 200%;
+  color: rgba(16, 185, 129, 0.1);
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 12px;
+  line-height: 1.2;
+  white-space: pre-wrap;
+  animation: matrix-rain 15s linear infinite;
+}
+
+/* Terminal Panel */
+.terminal-panel {
+  position: relative;
+  z-index: 2;
+}
+
+.terminal-window {
+  background: #0d1117 !important;
+  background-color: rgba(13, 17, 23, 0.95) !important;
+  border: 1px solid #21262d !important;
+  border-radius: 8px;
+  box-shadow: 
+    0 8px 32px rgba(0, 0, 0, 0.3),
+    inset 0 1px 0 rgba(255, 255, 255, 0.1);
+  backdrop-filter: blur(10px);
+}
+
+.terminal-header {
+  background: #161b22;
+  border-bottom: 1px solid #21262d;
+  padding: 12px 16px;
+  margin: -16px -16px 16px -16px;
+  border-radius: 8px 8px 0 0;
+}
+
+.terminal-button {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  margin-right: 8px;
+}
+
+.terminal-button.red {
+  background: #ff5f56;
+}
+
+.terminal-button.yellow {
+  background: #ffbd2e;
+}
+
+.terminal-button.green {
+  background: #27ca3f;
+}
+
+.terminal-title {
+  font-family: 'JetBrains Mono', monospace;
+  font-weight: 500;
+  color: #8b949e;
+}
+
+.terminal-content {
+  background: #0d1117;
+  border-radius: 4px;
+  padding: 16px;
+  min-height: 200px;
+  font-family: 'JetBrains Mono', monospace;
+}
+
+.terminal-prompt {
+  color: #10b981;
+  font-weight: 600;
+  user-select: none;
+}
+
+.terminal-text {
+  color: #f0f6fc;
+  font-weight: 400;
+}
+
+.terminal-cursor {
+  animation: terminal-blink 1s infinite;
+  color: #10b981;
+  font-weight: bold;
+}
+
+.terminal-output {
+  color: #8b949e;
+  font-style: italic;
+  margin-left: 20px;
+}
+
+.system-info {
+  background: #161b22;
+  border: 1px solid #21262d;
+  border-radius: 4px;
+  padding: 12px;
+}
+
+.monospace {
+  font-family: 'JetBrains Mono', 'Fira Code', monospace;
+  font-weight: 400;
+}
+
+/* Code Window */
+.code-window {
+  background: #0d1117 !important;
+  background-color: rgba(13, 17, 23, 0.9) !important;
+  border: 1px solid rgba(33, 38, 45, 0.5) !important;
+  border-radius: 8px;
+  box-shadow: 
+    0 8px 32px rgba(0, 0, 0, 0.2),
+    inset 0 1px 0 rgba(255, 255, 255, 0.1);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+}
+
+/* Universal dark theme for all browsers */
+.mantine-Paper-root {
+  background: #0d1117 !important;
+  background-color: #0d1117 !important;
+}
+
+.mantine-TextInput-input {
+  background: #0d1117 !important;
+  background-color: rgba(13, 17, 23, 0.8) !important;
+  color: #f0f6fc !important;
+}
+
+.mantine-PasswordInput-input {
+  background: #0d1117 !important;
+  background-color: rgba(13, 17, 23, 0.8) !important;
+  color: #f0f6fc !important;
+}
+
+.mantine-Tabs-list {
+  background: #161b22 !important;
+  background-color: rgba(22, 27, 34, 0.8) !important;
+}
+
+.mantine-Tabs-tab {
+  background: transparent !important;
+  color: #8b949e !important;
+}
+
+.mantine-Tabs-tab[data-active="true"] {
+  background: #21262d !important;
+  background-color: rgba(33, 38, 45, 0.8) !important;
+  color: #10b981 !important;
+}
+
+.mantine-Alert-root {
+  background: rgba(239, 68, 68, 0.1) !important;
+  background-color: rgba(239, 68, 68, 0.1) !important;
+  border-color: rgba(239, 68, 68, 0.3) !important;
+}
+
+.code-header {
+  background: #161b22 !important;
+  background-color: rgba(22, 27, 34, 0.9) !important;
+  border-bottom: 1px solid rgba(33, 38, 45, 0.5) !important;
+  padding: 12px 16px;
+  margin: -16px -16px 16px -16px;
+  border-radius: 8px 8px 0 0;
+  backdrop-filter: blur(15px);
+  -webkit-backdrop-filter: blur(15px);
+}
+
+.code-button {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  margin-right: 8px;
+}
+
+.code-button.red {
+  background: #ff5f56;
+}
+
+.code-button.yellow {
+  background: #ffbd2e;
+}
+
+.code-button.green {
+  background: #27ca3f;
+}
+
+/* Code Tabs */
+.code-tabs {
+  background: #161b22 !important;
+  background-color: rgba(22, 27, 34, 0.8) !important;
+  border: 1px solid rgba(33, 38, 45, 0.5) !important;
+  border-radius: 6px;
+  padding: 4px;
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+}
+
+.code-tab {
+  background: transparent !important;
+  border: none !important;
+  color: #8b949e !important;
+  font-family: 'JetBrains Mono', monospace !important;
+  font-weight: 500 !important;
+  font-size: 12px !important;
+  text-transform: uppercase !important;
+  letter-spacing: 0.5px !important;
+  transition: all 0.2s ease !important;
+}
+
+.code-tab:hover {
+  background: rgba(255, 255, 255, 0.05) !important;
+  color: #f0f6fc !important;
+}
+
+.code-tab[data-active="true"] {
+  background: #21262d !important;
+  color: #10b981 !important;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2) !important;
+}
+
+/* Code Inputs */
+.code-input {
+  background: #0d1117 !important;
+  background-color: rgba(13, 17, 23, 0.8) !important;
+  border: 1px solid rgba(33, 38, 45, 0.5) !important;
+  color: #f0f6fc !important;
+  font-family: 'JetBrains Mono', monospace !important;
+  font-size: 14px !important;
+  transition: all 0.3s ease !important;
+  backdrop-filter: blur(20px) !important;
+  -webkit-backdrop-filter: blur(20px) !important;
+  box-shadow: 
+    0 4px 6px rgba(0, 0, 0, 0.1),
+    inset 0 1px 0 rgba(255, 255, 255, 0.05) !important;
+}
+
+.code-input:focus {
+  border-color: rgba(16, 185, 129, 0.6) !important;
+  box-shadow: 
+    0 0 0 2px rgba(16, 185, 129, 0.2),
+    0 8px 16px rgba(0, 0, 0, 0.2),
+    inset 0 1px 0 rgba(255, 255, 255, 0.1) !important;
+  background: #161b22 !important;
+  background-color: rgba(22, 27, 34, 0.9) !important;
+  backdrop-filter: blur(25px) !important;
+  -webkit-backdrop-filter: blur(25px) !important;
+  animation: code-glow 2s ease-in-out infinite !important;
+}
+
+.code-input::placeholder {
+  color: #6b7280 !important;
+  font-family: 'JetBrains Mono', monospace !important;
+}
+
+/* Code Buttons */
+.code-button-primary {
+  background: linear-gradient(135deg, #10b981 0%, #059669 100%) !important;
+  border: none !important;
+  color: #000 !important;
+  font-family: 'JetBrains Mono', monospace !important;
+  font-weight: 600 !important;
+  font-size: 14px !important;
+  text-transform: uppercase !important;
+  letter-spacing: 0.5px !important;
+  transition: all 0.3s ease !important;
+  box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3) !important;
+}
+
+.code-button-primary:hover {
+  background: linear-gradient(135deg, #059669 0%, #047857 100%) !important;
+  transform: translateY(-2px) !important;
+  box-shadow: 0 8px 20px rgba(16, 185, 129, 0.4) !important;
+}
+
+.code-button-secondary {
+  background: linear-gradient(135deg, #6366f1 0%, #4f46e5 100%) !important;
+  border: none !important;
+  color: #fff !important;
+  font-family: 'JetBrains Mono', monospace !important;
+  font-weight: 600 !important;
+  font-size: 14px !important;
+  text-transform: uppercase !important;
+  letter-spacing: 0.5px !important;
+  transition: all 0.3s ease !important;
+  box-shadow: 0 4px 12px rgba(99, 102, 241, 0.3) !important;
+}
+
+.code-button-secondary:hover {
+  background: linear-gradient(135deg, #4f46e5 0%, #4338ca 100%) !important;
+  transform: translateY(-2px) !important;
+  box-shadow: 0 8px 20px rgba(99, 102, 241, 0.4) !important;
+}
+
+/* Code Alert */
+.code-alert {
+  background: rgba(239, 68, 68, 0.1) !important;
+  border: 1px solid rgba(239, 68, 68, 0.3) !important;
+  color: #fca5a5 !important;
+  font-family: 'JetBrains Mono', monospace !important;
+}
+
+/* Code Help */
+.code-help {
+  background: #161b22 !important;
+  background-color: rgba(22, 27, 34, 0.7) !important;
+  border: 1px solid rgba(33, 38, 45, 0.4) !important;
+  font-family: 'JetBrains Mono', monospace !important;
+  backdrop-filter: blur(15px) !important;
+  -webkit-backdrop-filter: blur(15px) !important;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+  .programmer-container {
+    padding: 0 !important;
+    display: flex !important;
+    align-items: center !important;
+    min-height: 100vh !important;
+  }
+  
+  .main-container {
+    padding: 0 !important;
+    width: 100% !important;
+  }
+  
+  .terminal-window,
+  .code-window {
+    margin: 0 10px;
+  }
+  
+  .terminal-content {
+    min-height: 150px;
+    padding: 12px;
+  }
+  
+  .code-input {
+    font-size: 16px !important; /* Prevent zoom on iOS */
+  }
+}
+
+@media (max-width: 480px) {
+  .login-layout {
+    gap: 84px !important;
+    margin-top: 80px !important;
+    margin-bottom: 30px !important;
+    min-height: calc(100vh - 110px) !important;
+  }
+  
+  .programmer-container {
+    padding: 0 !important;
+    display: flex !important;
+    align-items: center !important;
+    min-height: 100vh !important;
+  }
+  
+  .main-container {
+    padding: 0 !important;
+    width: 100% !important;
+  }
+  
+  .terminal-header,
+  .code-header {
+    padding: 8px 12px;
+  }
+  
+  .terminal-content {
+    padding: 8px;
+    min-height: 120px;
+  }
+  
+  .code-tab {
+    font-size: 10px !important;
+    padding: 8px 12px !important;
+  }
+  
+  .terminal-panel,
+  .form-panel {
+    margin: 0 !important;
+  }
+}
+
+/* Loading States */
+.code-button-primary[data-loading="true"],
+.code-button-secondary[data-loading="true"] {
+  position: relative;
+  color: transparent !important;
+}
+
+.code-button-primary[data-loading="true"]::after,
+.code-button-secondary[data-loading="true"]::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 16px;
+  height: 16px;
+  margin: -8px 0 0 -8px;
+  border: 2px solid transparent;
+  border-top: 2px solid currentColor;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+/* Accessibility */
+@media (prefers-reduced-motion: reduce) {
+  .terminal-cursor,
+  .code-glow,
+  .matrix-rain,
+  .pulse-glow {
+    animation: none;
+  }
+}
+
+/* Focus States for Accessibility */
+.code-input:focus,
+.code-button-primary:focus,
+.code-button-secondary:focus,
+.code-tab:focus {
+  outline: 2px solid #10b981;
+  outline-offset: 2px;
+}
