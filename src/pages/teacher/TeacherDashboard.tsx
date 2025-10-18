@@ -29,7 +29,7 @@ import {
   IconBell,
   IconPlus
 } from '@tabler/icons-react';
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar, PieChart, Pie, Cell } from 'recharts';
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar } from 'recharts';
 import { useAuth } from '../../contexts/AuthContext';
 import { Teacher } from '../../types';
 import { classService } from '../../services/classService';
@@ -161,7 +161,7 @@ export function TeacherDashboard() {
       // Load grade analytics
       const analytics = await gradeService.getGradeAnalytics().catch((error) => {
         console.error('Error loading grade analytics:', error);
-        return { byGrade: [], bySubject: [] };
+        return { byGrade: [] };
       });
       
       // Load submission trends (real data from assignments)
@@ -434,39 +434,6 @@ export function TeacherDashboard() {
                 )}
               </Card>
 
-              {/* Grade Distribution by Subject */}
-              <Card shadow="sm" padding="lg" radius="md" withBorder>
-                <Text fw={600} mb="md">Distribusi Nilai per Mata Pelajaran</Text>
-                {gradeAnalytics && gradeAnalytics.bySubject && gradeAnalytics.bySubject.some((item: any) => item.totalSubmissions > 0) ? (
-                  <ResponsiveContainer width="100%" height={250}>
-                    <PieChart>
-                      <Pie
-                        data={gradeAnalytics.bySubject.filter((item: any) => item.totalSubmissions > 0)}
-                        cx="50%"
-                        cy="50%"
-                        labelLine={false}
-                        label={({ subject, percentage }) => `${subject}: ${percentage.toFixed(1)}%`}
-                        outerRadius={80}
-                        fill="#8884d8"
-                        dataKey="percentage"
-                      >
-                        {gradeAnalytics.bySubject.filter((item: any) => item.totalSubmissions > 0).map((entry: any, index: number) => (
-                          <Cell key={`cell-${index}`} fill={`hsl(${index * 60}, 70%, 50%)`} />
-                        ))}
-                      </Pie>
-                      <Tooltip formatter={(value) => [`${Number(value).toFixed(1)}%`, 'Rata-rata']} />
-                    </PieChart>
-                  </ResponsiveContainer>
-                ) : (
-                  <Center h={250}>
-                    <EmptyState
-                      icon={IconFileText}
-                      title="Belum ada data nilai"
-                      description="Data distribusi nilai akan muncul setelah ada penilaian tugas"
-                    />
-                  </Center>
-                )}
-              </Card>
 
               {/* Quick Actions */}
               <Card shadow="sm" padding="lg" radius="md" withBorder>

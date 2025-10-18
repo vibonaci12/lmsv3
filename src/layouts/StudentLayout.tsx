@@ -27,7 +27,7 @@ export function StudentLayout() {
 
   const navItems = [
     { icon: LayoutDashboard, label: 'Dashboard', path: '/student/dashboard' },
-    { icon: BookOpen, label: 'Kelas & Tugas', path: '/student/classroom' },
+    { icon: BookOpen, label: 'My Classroom', path: '/student/classroom' },
     { icon: Trophy, label: 'Leaderboard', path: '/student/leaderboard' },
     { icon: Newspaper, label: 'Newsroom', path: '/student/newsroom' },
   ];

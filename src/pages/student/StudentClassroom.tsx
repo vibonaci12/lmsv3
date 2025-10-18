@@ -36,6 +36,7 @@ import {
   IconPresentation,
   IconUpload,
   IconEye,
+  IconUserCheck,
 } from '@tabler/icons-react';
 import { useStudentAuth } from '../../contexts/StudentAuthContext';
 import { LoadingSpinner, EmptyState, Pagination, usePagination } from '../../components';
@@ -48,7 +49,6 @@ import dayjs from 'dayjs';
 interface ClassInfo {
   id: string;
   name: string;
-  subject: string;
   grade: string;
   description?: string;
   teacher: {
@@ -62,6 +62,12 @@ interface ClassInfo {
   completed_assignments: number;
   upcoming_assignments: number;
   recent_announcements: number;
+  attendance_count: number;
+  total_attendance: number;
+  present_count: number;
+  sick_count: number;
+  permission_count: number;
+  absent_count: number;
 }
 
 interface Announcement {
@@ -121,7 +127,6 @@ interface Assignment {
   class: {
     id: string;
     name: string;
-    subject: string;
     grade: string;
   };
   submission?: {
@@ -308,10 +313,26 @@ export function StudentClassroom() {
           console.error('Error fetching announcements:', announcementsError);
         }
 
+        // Get attendance data
+        const { data: attendanceData, error: attendanceError } = await supabase
+          .from('attendances')
+          .select('id, status')
+          .eq('student_id', student.id)
+          .eq('class_id', classData.id);
+
+        if (attendanceError) {
+          console.error('Error fetching attendance:', attendanceError);
+        }
+
+        const presentCount = attendanceData?.filter(a => a.status === 'present').length || 0;
+        const sickCount = attendanceData?.filter(a => a.status === 'sick').length || 0;
+        const permissionCount = attendanceData?.filter(a => a.status === 'permission').length || 0;
+        const absentCount = attendanceData?.filter(a => a.status === 'absent').length || 0;
+        const totalAttendance = attendanceData?.length || 0;
+
         classInfos.push({
           id: classData.id,
           name: classData.name,
-          subject: 'Matematika', // Default subject since it's not in the table
           grade: classData.grade,
           description: classData.description,
           teacher: teacherData,
@@ -320,7 +341,13 @@ export function StudentClassroom() {
           total_assignments: totalAssignments,
           completed_assignments: completedAssignments,
           upcoming_assignments: upcomingAssignments,
-          recent_announcements: announcements?.length || 0
+          recent_announcements: announcements?.length || 0,
+          attendance_count: presentCount,
+          total_attendance: totalAttendance,
+          present_count: presentCount,
+          sick_count: sickCount,
+          permission_count: permissionCount,
+          absent_count: absentCount
         });
       }
 
@@ -485,7 +512,7 @@ export function StudentClassroom() {
           return {
             ...assignment,
             teacher: teacherData || { id: '', full_name: 'Unknown Teacher', email: '' },
-            class: classData ? { ...classData, subject: 'Matematika' } : { id: '', name: 'Unknown Class', subject: 'Matematika', grade: '' },
+            class: classData ? { ...classData } : { id: '', name: 'Unknown Class', grade: '' },
             submission: submission || undefined
           };
         })
@@ -611,8 +638,8 @@ export function StudentClassroom() {
       <Stack gap="xl">
         {/* Header */}
         <div>
-          <Title order={1}>Kelas & Tugas</Title>
-          <Text c="dimmed">Informasi kelas, pengumuman, materi, dan tugas pembelajaran</Text>
+          <Title order={1}>My Classroom</Title>
+          <Text c="dimmed">Pusat informasi Kelas</Text>
         </div>
 
         {/* Class Information Card */}
@@ -621,9 +648,7 @@ export function StudentClassroom() {
             {/* Class Header */}
             <Group justify="space-between" align="flex-start">
               <div>
-                <Text fw={700} size="xl">{classInfo.name}</Text>
-                <Text size="lg" c="dimmed">{classInfo.subject}</Text>
-                <Text size="md" c="dimmed">Kelas {formatGrade(classInfo.grade)}</Text>
+                <Text fw={700} size="xl">{formatGrade(classInfo.grade)} - {classInfo.name}</Text>
               </div>
               <Badge color="blue" variant="light" size="lg">
                 {classInfo.total_assignments} Tugas
@@ -776,6 +801,48 @@ export function StudentClassroom() {
                   </Stack>
                 </Card>
               </SimpleGrid>
+
+              {/* Attendance Summary */}
+              {classes.length > 0 && (
+                <Card withBorder radius="md" p="md">
+                  <Text fw={600} size="lg" mb="md">Ringkasan Absensi</Text>
+                  <SimpleGrid cols={{ base: 1, sm: 2, md: 3 }}>
+                    {classes.map((classInfo) => (
+                      <Paper key={classInfo.id} p="md" withBorder radius="md">
+                        <Text fw={500} size="sm" mb="md">{formatGrade(classInfo.grade)} - {classInfo.name}</Text>
+                        
+                        {classInfo.total_attendance > 0 ? (
+                          <Stack gap="xs">
+                            <Group justify="space-between">
+                              <Text size="sm" c="green">Hadir</Text>
+                              <Text fw={600} size="sm" c="green">{classInfo.present_count}</Text>
+                            </Group>
+                            <Group justify="space-between">
+                              <Text size="sm" c="orange">Sakit</Text>
+                              <Text fw={600} size="sm" c="orange">{classInfo.sick_count}</Text>
+                            </Group>
+                            <Group justify="space-between">
+                              <Text size="sm" c="blue">Ijin</Text>
+                              <Text fw={600} size="sm" c="blue">{classInfo.permission_count}</Text>
+                            </Group>
+                            <Group justify="space-between">
+                              <Text size="sm" c="red">Alfa</Text>
+                              <Text fw={600} size="sm" c="red">{classInfo.absent_count}</Text>
+                            </Group>
+                            <Divider my="xs" />
+                            <Group justify="space-between">
+                              <Text size="sm" fw={500}>Total</Text>
+                              <Text fw={700} size="sm">{classInfo.total_attendance}</Text>
+                            </Group>
+                          </Stack>
+                        ) : (
+                          <Text size="sm" c="dimmed">Belum ada data absensi</Text>
+                        )}
+                      </Paper>
+                    ))}
+                  </SimpleGrid>
+                </Card>
+              )}
             </Stack>
           </Tabs.Panel>
 

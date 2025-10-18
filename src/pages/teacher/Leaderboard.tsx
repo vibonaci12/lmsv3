@@ -7,35 +7,26 @@ import {
   Group,
   Card,
   SimpleGrid,
-  Paper,
   Badge,
   Avatar,
   TextInput,
   Select,
-  Alert,
   Progress,
   Table,
   ActionIcon,
-  Menu,
-  Tabs,
-  ScrollArea
+  Menu
 } from '@mantine/core';
 import { 
   IconTrophy,
   IconMedal,
   IconAward,
   IconSearch,
-  IconFilter,
   IconRefresh,
   IconDownload,
   IconDots,
-  IconEye,
-  IconUsers,
-  IconClipboardList,
-  IconTrendingUp
+  IconEye
 } from '@tabler/icons-react';
-import { useAuth } from '../../contexts/AuthContext';
-import { LoadingSpinner, EmptyState, Pagination, usePagination } from '../../components';
+import { LoadingSpinner, Pagination, usePagination } from '../../components';
 import { notifications } from '@mantine/notifications';
 import { formatGrade } from '../../utils/romanNumerals';
 import { supabase } from '../../lib/supabase';
@@ -64,20 +55,16 @@ interface GradeStats {
 }
 
 export function Leaderboard() {
-  const { user } = useAuth();
-  const teacher = user!;
-  
   const [loading, setLoading] = useState(true);
   const [students, setStudents] = useState<StudentScore[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedGrade, setSelectedGrade] = useState<string>('');
-  const [activeTab, setActiveTab] = useState<string>('overall');
   
   useEffect(() => {
     loadData();
   }, []);
 
-  // Memoized filtered students
+  // Memoized filtered students with dynamic ranking
   const filteredStudents = useMemo(() => {
     let filtered = students;
 
@@ -93,7 +80,14 @@ export function Leaderboard() {
       filtered = filtered.filter(student => student.grade === selectedGrade);
     }
 
-    return filtered;
+    // Recalculate ranks based on filtered data
+    // Sort by average score (descending) and assign new ranks
+    const sortedFiltered = [...filtered].sort((a, b) => b.average_score - a.average_score);
+    sortedFiltered.forEach((student, index) => {
+      student.rank = index + 1;
+    });
+
+    return sortedFiltered;
   }, [students, searchTerm, selectedGrade]);
 
   // Memoized grade stats
@@ -132,7 +126,6 @@ export function Leaderboard() {
     currentPage,
     itemsPerPage,
     totalItems,
-    totalPages,
     paginatedData: paginatedStudents,
     handlePageChange,
     handleItemsPerPageChange,
@@ -257,11 +250,8 @@ export function Leaderboard() {
         });
       }
 
-      // Sort by average score and assign ranks
+      // Sort by average score (ranks will be calculated dynamically in filteredStudents)
       studentScores.sort((a, b) => b.average_score - a.average_score);
-      studentScores.forEach((student, index) => {
-        student.rank = index + 1;
-      });
 
       setStudents(studentScores);
     } catch (error) {
@@ -374,6 +364,11 @@ export function Leaderboard() {
                   <Text size="xs" c="dimmed">
                     Juara: {stat.top_performer}
                   </Text>
+                  {selectedGrade && selectedGrade === stat.grade && (
+                    <Badge color="blue" variant="light" size="xs" mt={4}>
+                      Sedang difilter
+                    </Badge>
+                  )}
                 </div>
               </Group>
             </Card>
@@ -420,9 +415,21 @@ export function Leaderboard() {
           <Stack gap="md">
             <Group justify="space-between">
               <Text fw={600}>Peringkat Siswa</Text>
-              <Text size="sm" c="dimmed">
-                Diurutkan berdasarkan nilai rata-rata
-              </Text>
+              <Group gap="xs">
+                <Text size="sm" c="dimmed">
+                  Diurutkan berdasarkan nilai rata-rata
+                </Text>
+                {selectedGrade && (
+                  <Badge color="blue" variant="light" size="sm">
+                    Filter: Kelas {formatGrade(selectedGrade)}
+                  </Badge>
+                )}
+                {!selectedGrade && (
+                  <Badge color="green" variant="light" size="sm">
+                    Semua Tingkat
+                  </Badge>
+                )}
+              </Group>
             </Group>
 
             <div style={{ overflowX: 'auto' }}>
