@@ -51,14 +51,14 @@
   font-family: 'JetBrains Mono', 'Fira Code', monospace;
 }
 
-/* Firefox-specific root fixes */
+/* Firefox-specific root fixes - only for login page */
 @-moz-document url-prefix() {
   .programmer-container {
     background: #0a0a0a !important;
     background-color: #0a0a0a !important;
   }
   
-  /* Ensure all child elements inherit dark theme */
+  /* Ensure all child elements inherit dark theme only within login page */
   .programmer-container * {
     color-scheme: dark !important;
   }
@@ -300,50 +300,50 @@
   -webkit-backdrop-filter: blur(20px);
 }
 
-/* Universal dark theme for all browsers */
-.mantine-Paper-root {
-  background: #0d1117 !important;
-  background-color: #0d1117 !important;
+/* Dark theme only for login page - using more specific selectors */
+.programmer-container .mantine-Paper-root {
+  background: #0d1117;
+  background-color: #0d1117;
 }
 
-.mantine-TextInput-input {
-  background: #0d1117 !important;
-  background-color: rgba(13, 17, 23, 0.8) !important;
-  color: #f0f6fc !important;
+.programmer-container .mantine-TextInput-input {
+  background: #0d1117;
+  background-color: rgba(13, 17, 23, 0.8);
+  color: #f0f6fc;
 }
 
-.mantine-PasswordInput-input {
-  background: #0d1117 !important;
-  background-color: rgba(13, 17, 23, 0.8) !important;
-  color: #f0f6fc !important;
+.programmer-container .mantine-PasswordInput-input {
+  background: #0d1117;
+  background-color: rgba(13, 17, 23, 0.8);
+  color: #f0f6fc;
 }
 
-.mantine-Tabs-list {
-  background: #161b22 !important;
-  background-color: rgba(22, 27, 34, 0.8) !important;
+.programmer-container .mantine-Tabs-list {
+  background: #161b22;
+  background-color: rgba(22, 27, 34, 0.8);
 }
 
-.mantine-Tabs-tab {
-  background: transparent !important;
-  color: #8b949e !important;
+.programmer-container .mantine-Tabs-tab {
+  background: transparent;
+  color: #8b949e;
 }
 
-.mantine-Tabs-tab[data-active="true"] {
-  background: #21262d !important;
-  background-color: rgba(33, 38, 45, 0.8) !important;
-  color: #10b981 !important;
+.programmer-container .mantine-Tabs-tab[data-active="true"] {
+  background: #21262d;
+  background-color: rgba(33, 38, 45, 0.8);
+  color: #10b981;
 }
 
-.mantine-Alert-root {
-  background: rgba(239, 68, 68, 0.1) !important;
-  background-color: rgba(239, 68, 68, 0.1) !important;
-  border-color: rgba(239, 68, 68, 0.3) !important;
+.programmer-container .mantine-Alert-root {
+  background: rgba(239, 68, 68, 0.1);
+  background-color: rgba(239, 68, 68, 0.1);
+  border-color: rgba(239, 68, 68, 0.3);
 }
 
 .code-header {
-  background: #161b22 !important;
-  background-color: rgba(22, 27, 34, 0.9) !important;
-  border-bottom: 1px solid rgba(33, 38, 45, 0.5) !important;
+  background: #161b22;
+  background-color: rgba(22, 27, 34, 0.9);
+  border-bottom: 1px solid rgba(33, 38, 45, 0.5);
   padding: 12px 16px;
   margin: -16px -16px 16px -16px;
   border-radius: 8px 8px 0 0;
@@ -372,9 +372,9 @@
 
 /* Code Tabs */
 .code-tabs {
-  background: #161b22 !important;
-  background-color: rgba(22, 27, 34, 0.8) !important;
-  border: 1px solid rgba(33, 38, 45, 0.5) !important;
+  background: #161b22;
+  background-color: rgba(22, 27, 34, 0.8);
+  border: 1px solid rgba(33, 38, 45, 0.5);
   border-radius: 6px;
   padding: 4px;
   backdrop-filter: blur(10px);
@@ -382,117 +382,117 @@
 }
 
 .code-tab {
-  background: transparent !important;
-  border: none !important;
-  color: #8b949e !important;
-  font-family: 'JetBrains Mono', monospace !important;
-  font-weight: 500 !important;
-  font-size: 12px !important;
-  text-transform: uppercase !important;
-  letter-spacing: 0.5px !important;
-  transition: all 0.2s ease !important;
+  background: transparent;
+  border: none;
+  color: #8b949e;
+  font-family: 'JetBrains Mono', monospace;
+  font-weight: 500;
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  transition: all 0.2s ease;
 }
 
 .code-tab:hover {
-  background: rgba(255, 255, 255, 0.05) !important;
-  color: #f0f6fc !important;
+  background: rgba(255, 255, 255, 0.05);
+  color: #f0f6fc;
 }
 
 .code-tab[data-active="true"] {
-  background: #21262d !important;
-  color: #10b981 !important;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2) !important;
+  background: #21262d;
+  color: #10b981;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
 }
 
 /* Code Inputs */
 .code-input {
-  background: #0d1117 !important;
-  background-color: rgba(13, 17, 23, 0.8) !important;
-  border: 1px solid rgba(33, 38, 45, 0.5) !important;
-  color: #f0f6fc !important;
-  font-family: 'JetBrains Mono', monospace !important;
-  font-size: 14px !important;
-  transition: all 0.3s ease !important;
-  backdrop-filter: blur(20px) !important;
-  -webkit-backdrop-filter: blur(20px) !important;
+  background: #0d1117;
+  background-color: rgba(13, 17, 23, 0.8);
+  border: 1px solid rgba(33, 38, 45, 0.5);
+  color: #f0f6fc;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 14px;
+  transition: all 0.3s ease;
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
   box-shadow: 
     0 4px 6px rgba(0, 0, 0, 0.1),
-    inset 0 1px 0 rgba(255, 255, 255, 0.05) !important;
+    inset 0 1px 0 rgba(255, 255, 255, 0.05);
 }
 
 .code-input:focus {
-  border-color: rgba(16, 185, 129, 0.6) !important;
+  border-color: rgba(16, 185, 129, 0.6);
   box-shadow: 
     0 0 0 2px rgba(16, 185, 129, 0.2),
     0 8px 16px rgba(0, 0, 0, 0.2),
-    inset 0 1px 0 rgba(255, 255, 255, 0.1) !important;
-  background: #161b22 !important;
-  background-color: rgba(22, 27, 34, 0.9) !important;
-  backdrop-filter: blur(25px) !important;
-  -webkit-backdrop-filter: blur(25px) !important;
-  animation: code-glow 2s ease-in-out infinite !important;
+    inset 0 1px 0 rgba(255, 255, 255, 0.1);
+  background: #161b22;
+  background-color: rgba(22, 27, 34, 0.9);
+  backdrop-filter: blur(25px);
+  -webkit-backdrop-filter: blur(25px);
+  animation: code-glow 2s ease-in-out infinite;
 }
 
 .code-input::placeholder {
-  color: #6b7280 !important;
-  font-family: 'JetBrains Mono', monospace !important;
+  color: #6b7280;
+  font-family: 'JetBrains Mono', monospace;
 }
 
 /* Code Buttons */
 .code-button-primary {
-  background: linear-gradient(135deg, #10b981 0%, #059669 100%) !important;
-  border: none !important;
-  color: #000 !important;
-  font-family: 'JetBrains Mono', monospace !important;
-  font-weight: 600 !important;
-  font-size: 14px !important;
-  text-transform: uppercase !important;
-  letter-spacing: 0.5px !important;
-  transition: all 0.3s ease !important;
-  box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3) !important;
+  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+  border: none;
+  color: #000;
+  font-family: 'JetBrains Mono', monospace;
+  font-weight: 600;
+  font-size: 14px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  transition: all 0.3s ease;
+  box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
 }
 
 .code-button-primary:hover {
-  background: linear-gradient(135deg, #059669 0%, #047857 100%) !important;
-  transform: translateY(-2px) !important;
-  box-shadow: 0 8px 20px rgba(16, 185, 129, 0.4) !important;
+  background: linear-gradient(135deg, #059669 0%, #047857 100%);
+  transform: translateY(-2px);
+  box-shadow: 0 8px 20px rgba(16, 185, 129, 0.4);
 }
 
 .code-button-secondary {
-  background: linear-gradient(135deg, #6366f1 0%, #4f46e5 100%) !important;
-  border: none !important;
-  color: #fff !important;
-  font-family: 'JetBrains Mono', monospace !important;
-  font-weight: 600 !important;
-  font-size: 14px !important;
-  text-transform: uppercase !important;
-  letter-spacing: 0.5px !important;
-  transition: all 0.3s ease !important;
-  box-shadow: 0 4px 12px rgba(99, 102, 241, 0.3) !important;
+  background: linear-gradient(135deg, #6366f1 0%, #4f46e5 100%);
+  border: none;
+  color: #fff;
+  font-family: 'JetBrains Mono', monospace;
+  font-weight: 600;
+  font-size: 14px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  transition: all 0.3s ease;
+  box-shadow: 0 4px 12px rgba(99, 102, 241, 0.3);
 }
 
 .code-button-secondary:hover {
-  background: linear-gradient(135deg, #4f46e5 0%, #4338ca 100%) !important;
-  transform: translateY(-2px) !important;
-  box-shadow: 0 8px 20px rgba(99, 102, 241, 0.4) !important;
+  background: linear-gradient(135deg, #4f46e5 0%, #4338ca 100%);
+  transform: translateY(-2px);
+  box-shadow: 0 8px 20px rgba(99, 102, 241, 0.4);
 }
 
 /* Code Alert */
 .code-alert {
-  background: rgba(239, 68, 68, 0.1) !important;
-  border: 1px solid rgba(239, 68, 68, 0.3) !important;
-  color: #fca5a5 !important;
-  font-family: 'JetBrains Mono', monospace !important;
+  background: rgba(239, 68, 68, 0.1);
+  border: 1px solid rgba(239, 68, 68, 0.3);
+  color: #fca5a5;
+  font-family: 'JetBrains Mono', monospace;
 }
 
 /* Code Help */
 .code-help {
-  background: #161b22 !important;
-  background-color: rgba(22, 27, 34, 0.7) !important;
-  border: 1px solid rgba(33, 38, 45, 0.4) !important;
-  font-family: 'JetBrains Mono', monospace !important;
-  backdrop-filter: blur(15px) !important;
-  -webkit-backdrop-filter: blur(15px) !important;
+  background: #161b22;
+  background-color: rgba(22, 27, 34, 0.7);
+  border: 1px solid rgba(33, 38, 45, 0.4);
+  font-family: 'JetBrains Mono', monospace;
+  backdrop-filter: blur(15px);
+  -webkit-backdrop-filter: blur(15px);
 }
 
 /* Responsive Design */
