@@ -420,7 +420,7 @@ export function TeacherDashboard() {
                         )}
                       >
                         <Text size="xs" c="dimmed">
-                          {activity.teacher.full_name} • {new Date(activity.created_at).toLocaleString('id-ID')}
+                          {activity.teacher?.full_name || 'Unknown'} • {new Date(activity.created_at).toLocaleString('id-ID')}
                         </Text>
                       </Timeline.Item>
                     ))}
@@ -491,7 +491,7 @@ export function TeacherDashboard() {
                   )}
                 >
                   <Text size="xs" c="dimmed">
-                    {activity.teacher.full_name} • {new Date(activity.created_at).toLocaleString('id-ID')}
+                    {activity.teacher?.full_name || 'Unknown'} • {new Date(activity.created_at).toLocaleString('id-ID')}
                   </Text>
                 </Timeline.Item>
               ))}

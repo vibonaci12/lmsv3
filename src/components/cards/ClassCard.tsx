@@ -119,10 +119,10 @@ export function ClassCard({
         {classData.created_by_teacher && (
           <Group gap="xs">
             <Avatar size="sm" radius="xl" color="blue">
-              {classData.created_by_teacher.full_name.charAt(0)}
+              {classData.created_by_teacher.full_name?.charAt(0) || 'T'}
             </Avatar>
             <Text size="xs" c="dimmed">
-              Dibuat oleh {classData.created_by_teacher.full_name}
+              Dibuat oleh {classData.created_by_teacher.full_name || 'Unknown Teacher'}
             </Text>
           </Group>
         )}

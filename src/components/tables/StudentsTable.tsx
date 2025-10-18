@@ -99,7 +99,7 @@ export function StudentsTable({
             </Table.Tr>
           </Table.Thead>
           <Table.Tbody>
-          {students.map((student) => (
+          {students.filter(student => student && student.id).map((student) => (
             <Table.Tr key={student.id}>
               {showSelection && (
                 <Table.Td>
@@ -112,11 +112,11 @@ export function StudentsTable({
               <Table.Td>
                 <Group gap="sm">
                   <Avatar size="sm" radius="xl" color="blue">
-                    {student.full_name.charAt(0)}
+                    {student.full_name?.charAt(0) || 'S'}
                   </Avatar>
                   <div>
                     <Text fw={500} size="sm">
-                      {student.full_name}
+                      {student.full_name || 'Unknown Student'}
                     </Text>
                     {student.phone && (
                       <Text size="xs" c="dimmed">

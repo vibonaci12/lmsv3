@@ -244,8 +244,8 @@ export function ClassAttendance() {
 
   // Filter students based on search and show only absent
   const filteredStudents = students.filter(student => {
-    const matchesSearch = student.full_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         student.email.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesSearch = student.full_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                         student.email?.toLowerCase().includes(searchTerm.toLowerCase());
     
     if (showOnlyAbsent) {
       const attendanceStatus = getAttendanceStatus(student.id);
@@ -522,11 +522,11 @@ export function ClassAttendance() {
                             <Group justify="space-between">
                               <Group gap="md">
                                 <Avatar size="md" radius="xl" color="blue">
-                                  {student.full_name.charAt(0)}
+                                  {student.full_name?.charAt(0) || 'S'}
                                 </Avatar>
                                 
                                 <div>
-                                  <Text fw={500}>{student.full_name}</Text>
+                                  <Text fw={500}>{student.full_name || 'Unknown Student'}</Text>
                                   <Text size="sm" c="dimmed">{student.email}</Text>
                                 </div>
                               </Group>

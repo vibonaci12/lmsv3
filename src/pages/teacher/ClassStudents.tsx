@@ -17,7 +17,8 @@ import {
   Alert,
   Checkbox,
   PasswordInput,
-  Tabs
+  Tabs,
+  Progress
 } from '@mantine/core';
 import { 
   IconArrowLeft,
@@ -62,6 +63,8 @@ export function ClassStudents() {
   const [searchResults, setSearchResults] = useState<Student[]>([]);
   const [passwordLoading, setPasswordLoading] = useState(false);
   const [addingStudent, setAddingStudent] = useState(false);
+  const [bulkDeleting, setBulkDeleting] = useState(false);
+  const [deleteProgress, setDeleteProgress] = useState({ current: 0, total: 0 });
   
   // Pagination
   const {
@@ -123,8 +126,8 @@ export function ClassStudents() {
       setSearchResults([]);
     } else {
       const filtered = students.filter(student =>
-        student.full_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        student.email.toLowerCase().includes(searchTerm.toLowerCase())
+        student.full_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        student.email?.toLowerCase().includes(searchTerm.toLowerCase())
       );
       setSearchResults(filtered);
     }
@@ -475,26 +478,98 @@ export function ClassStudents() {
   };
 
   const handleBulkDelete = async () => {
+    if (selectedStudents.length === 0) return;
+    
+    // Limit maximum students that can be deleted at once
+    const MAX_DELETE_LIMIT = 50;
+    if (selectedStudents.length > MAX_DELETE_LIMIT) {
+      notifications.show({
+        title: 'Terlalu Banyak',
+        message: `Maksimal ${MAX_DELETE_LIMIT} siswa yang dapat dihapus sekaligus`,
+        color: 'red',
+      });
+      return;
+    }
+    
+    setBulkDeleting(true);
+    setDeleteProgress({ current: 0, total: selectedStudents.length });
+    
     try {
-      for (const studentId of selectedStudents) {
-        await studentService.deleteStudent(studentId);
+      const BATCH_SIZE = 3; // Process 3 students at a time to avoid overwhelming the system
+      const totalStudents = selectedStudents.length;
+      let successCount = 0;
+      let errorCount = 0;
+      
+      // Process students in batches
+      for (let i = 0; i < selectedStudents.length; i += BATCH_SIZE) {
+        const batch = selectedStudents.slice(i, i + BATCH_SIZE);
+        
+        // Process batch concurrently
+        const batchPromises = batch.map(async (studentId) => {
+          try {
+            await studentService.deleteStudent(studentId);
+            return { success: true, studentId };
+          } catch (error) {
+            console.error(`Error deleting student ${studentId}:`, error);
+            return { success: false, studentId, error };
+          }
+        });
+        
+        const batchResults = await Promise.all(batchPromises);
+        
+        // Update progress
+        const batchSuccessCount = batchResults.filter(r => r.success).length;
+        const batchErrorCount = batchResults.filter(r => !r.success).length;
+        
+        successCount += batchSuccessCount;
+        errorCount += batchErrorCount;
+        
+        setDeleteProgress({ 
+          current: Math.min(i + BATCH_SIZE, totalStudents), 
+          total: totalStudents 
+        });
+        
+        // Small delay between batches to prevent overwhelming the system
+        if (i + BATCH_SIZE < selectedStudents.length) {
+          await new Promise(resolve => setTimeout(resolve, 500));
+        }
       }
       
-      notifications.show({
-        title: 'Berhasil',
-        message: `${selectedStudents.length} siswa berhasil dihapus`,
-        color: 'green',
-      });
+      // Show results
+      if (errorCount === 0) {
+        notifications.show({
+          title: 'Berhasil',
+          message: `${successCount} siswa berhasil dihapus`,
+          color: 'green',
+        });
+      } else if (successCount > 0) {
+        notifications.show({
+          title: 'Sebagian Berhasil',
+          message: `${successCount} siswa berhasil dihapus, ${errorCount} gagal`,
+          color: 'yellow',
+        });
+      } else {
+        notifications.show({
+          title: 'Gagal',
+          message: 'Semua siswa gagal dihapus',
+          color: 'red',
+        });
+      }
       
       setBulkDeleteModalOpen(false);
       setSelectedStudents([]);
-      loadData();
+      await loadData();
+      
     } catch (error: any) {
+      console.error('Error in bulk delete:', error);
       notifications.show({
         title: 'Error',
-        message: error.message || 'Gagal menghapus siswa',
+        message: error.message || 'Terjadi kesalahan saat menghapus siswa',
         color: 'red',
       });
+    } finally {
+      setBulkDeleting(false);
+      setDeleteProgress({ current: 0, total: 0 });
     }
   };
 
@@ -508,7 +583,19 @@ export function ClassStudents() {
 
   const handleSelectAll = (checked: boolean) => {
     if (checked) {
-      setSelectedStudents(paginatedData.map(student => student.id));
+      const allStudentIds = paginatedData.map(student => student.id);
+      
+      // Warn if trying to select too many students
+      if (allStudentIds.length > 50) {
+        notifications.show({
+          title: 'Peringatan',
+          message: 'Anda mencoba memilih terlalu banyak siswa. Maksimal 50 siswa yang dapat dihapus sekaligus.',
+          color: 'yellow',
+        });
+        return;
+      }
+      
+      setSelectedStudents(allStudentIds);
     } else {
       setSelectedStudents([]);
     }
@@ -580,16 +667,19 @@ export function ClassStudents() {
               />
               {selectedStudents.length > 0 && (
                 <Group gap="sm">
-                  <Text size="sm" c="dimmed">
+                  <Text size="sm" c={selectedStudents.length > 50 ? "red" : "dimmed"}>
                     {selectedStudents.length} dipilih
+                    {selectedStudents.length > 50 && " (Terlalu banyak!)"}
                   </Text>
                   <Button
                     variant="light"
                     color="red"
                     size="sm"
+                    loading={bulkDeleting}
                     onClick={() => setBulkDeleteModalOpen(true)}
+                    disabled={bulkDeleting || selectedStudents.length > 50}
                   >
-                    Hapus Terpilih
+                    {bulkDeleting ? `Menghapus... (${deleteProgress.current}/${deleteProgress.total})` : 'Hapus Terpilih'}
                   </Button>
                 </Group>
               )}
@@ -656,7 +746,7 @@ export function ClassStudents() {
                   </Table.Tr>
                 </Table.Thead>
                 <Table.Tbody>
-                  {currentStudents.map((student) => (
+                  {currentStudents.filter(student => student && student.id).map((student) => (
                     <Table.Tr key={student.id}>
                       <Table.Td>
                         <Checkbox
@@ -667,10 +757,10 @@ export function ClassStudents() {
                       <Table.Td>
                         <Group gap="sm">
                           <Avatar size="sm" radius="xl" color="blue">
-                            {student.full_name.charAt(0)}
+                            {student.full_name?.charAt(0) || 'S'}
                           </Avatar>
                           <div>
-                            <Text fw={500} size="sm">{student.full_name}</Text>
+                            <Text fw={500} size="sm">{student.full_name || 'Unknown Student'}</Text>
                             <Text size="xs" c="dimmed">{student.address || 'Tidak ada alamat'}</Text>
                           </div>
                         </Group>
@@ -923,15 +1013,41 @@ export function ClassStudents() {
         <ConfirmDialog
           opened={bulkDeleteModalOpen}
           onClose={() => {
-            setBulkDeleteModalOpen(false);
-            setSelectedStudents([]);
+            if (!bulkDeleting) {
+              setBulkDeleteModalOpen(false);
+              setSelectedStudents([]);
+            }
           }}
-          onConfirm={handleBulkDelete}
+          onConfirm={() => {
+            if (!bulkDeleting) {
+              handleBulkDelete();
+            }
+          }}
           title="Hapus Siswa Terpilih"
-          message={`Apakah Anda yakin ingin menghapus ${selectedStudents.length} siswa yang dipilih? Tindakan ini tidak dapat dibatalkan.`}
-          confirmLabel="Hapus Semua"
+          message={
+            <Stack gap="md">
+              <Text>
+                Apakah Anda yakin ingin menghapus {selectedStudents.length} siswa yang dipilih? Tindakan ini tidak dapat dibatalkan.
+              </Text>
+              {bulkDeleting && (
+                <Stack gap="xs">
+                  <Text size="sm" c="dimmed">
+                    Sedang menghapus siswa... ({deleteProgress.current}/{deleteProgress.total})
+                  </Text>
+                  <Progress 
+                    value={(deleteProgress.current / deleteProgress.total) * 100} 
+                    size="sm" 
+                    color="red"
+                  />
+                </Stack>
+              )}
+            </Stack>
+          }
+          confirmLabel={bulkDeleting ? "Menghapus..." : "Hapus Semua"}
           cancelLabel="Batal"
           confirmColor="red"
+          confirmLoading={bulkDeleting}
+          closeOnConfirm={false}
         />
 
         {/* Excel Import Modal */}

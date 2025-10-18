@@ -73,9 +73,9 @@ export function StudentLayout() {
               <Button variant="subtle" p={4}>
                 <Group gap="xs">
                   <Avatar size={32} radius="xl" color="green">
-                    {student.full_name.charAt(0)}
+                    {student.full_name?.charAt(0) || 'S'}
                   </Avatar>
-                  <Text size="sm" hiddenFrom="xs">{student.full_name}</Text>
+                  <Text size="sm" hiddenFrom="xs">{student.full_name || 'Student'}</Text>
                 </Group>
               </Button>
             </Menu.Target>

@@ -96,11 +96,11 @@ export function StudentCard({
       <Stack gap="sm" mt="md">
         <Group gap="md">
           <Avatar size="lg" radius="xl" color="blue">
-            {student.full_name.charAt(0)}
+            {student.full_name?.charAt(0) || 'S'}
           </Avatar>
           <div style={{ flex: 1 }}>
             <Text fw={600} size="lg" lineClamp={1}>
-              {student.full_name}
+              {student.full_name || 'Unknown Student'}
             </Text>
             <Text size="sm" c="dimmed" lineClamp={1}>
               {student.email}
@@ -146,10 +146,10 @@ export function StudentCard({
         {student.created_by_teacher && (
           <Group gap="xs">
             <Avatar size="sm" radius="xl" color="gray">
-              {student.created_by_teacher.full_name.charAt(0)}
+              {student.created_by_teacher.full_name?.charAt(0) || 'T'}
             </Avatar>
             <Text size="xs" c="dimmed">
-              Dibuat oleh {student.created_by_teacher.full_name}
+              Dibuat oleh {student.created_by_teacher.full_name || 'Unknown Teacher'}
             </Text>
           </Group>
         )}

@@ -146,10 +146,10 @@ export function StudentProfile() {
           <Stack gap="md">
             <Group gap="md">
               <Avatar size="lg" radius="xl" color="blue">
-                {student.full_name.charAt(0)}
+                {student.full_name?.charAt(0) || 'S'}
               </Avatar>
               <div>
-                <Text fw={600} size="lg">{student.full_name}</Text>
+                <Text fw={600} size="lg">{student.full_name || 'Unknown Student'}</Text>
                 <Text c="dimmed">{student.email}</Text>
                 <Text size="sm" c="dimmed">
                   Bergabung: {dayjs(student.created_at).format('DD/MM/YYYY')}

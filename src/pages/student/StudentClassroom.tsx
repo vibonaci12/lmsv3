@@ -36,7 +36,6 @@ import {
   IconPresentation,
   IconUpload,
   IconEye,
-  IconUserCheck,
 } from '@tabler/icons-react';
 import { useStudentAuth } from '../../contexts/StudentAuthContext';
 import { LoadingSpinner, EmptyState, Pagination, usePagination } from '../../components';
@@ -658,10 +657,10 @@ export function StudentClassroom() {
             {/* Teacher Info */}
             <Group gap="md">
               <Avatar size="lg" radius="xl" color="green">
-                {classInfo.teacher.full_name.charAt(0)}
+                {classInfo.teacher.full_name?.charAt(0) || 'T'}
               </Avatar>
               <div>
-                <Text fw={600} size="lg">{classInfo.teacher.full_name}</Text>
+                <Text fw={600} size="lg">{classInfo.teacher.full_name || 'Unknown Teacher'}</Text>
                 <Text size="sm" c="dimmed">{classInfo.teacher.email}</Text>
                 <Text size="xs" c="dimmed">
                   Bergabung: {dayjs(classInfo.enrolled_at).format('DD MMMM YYYY')}

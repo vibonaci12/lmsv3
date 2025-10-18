@@ -280,8 +280,8 @@ export function StudentLeaderboard() {
 
     if (searchTerm) {
       filtered = filtered.filter(student =>
-        student.full_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        student.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        student.full_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        student.email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
         student.class_name?.toLowerCase().includes(searchTerm.toLowerCase())
       );
     }
@@ -494,7 +494,7 @@ export function StudentLeaderboard() {
                     </Table.Tr>
                   </Table.Thead>
                   <Table.Tbody>
-                    {paginatedStudents.map((student) => (
+                    {paginatedStudents.filter(student => student && student.id).map((student) => (
                       <Table.Tr 
                         key={student.id}
                         style={{ 
@@ -510,11 +510,11 @@ export function StudentLeaderboard() {
                         <Table.Td>
                           <Group gap="sm">
                             <Avatar size="md" radius="xl" color={student.is_current_student ? "blue" : "gray"}>
-                              {student.full_name.charAt(0)}
+                              {student.full_name?.charAt(0) || 'S'}
                             </Avatar>
                             <div>
                               <Text fw={500} c={student.is_current_student ? "blue" : undefined}>
-                                {student.full_name}
+                                {student.full_name || 'Unknown Student'}
                                 {student.is_current_student && " (Anda)"}
                               </Text>
                               <Text size="sm" c="dimmed">{student.email}</Text>

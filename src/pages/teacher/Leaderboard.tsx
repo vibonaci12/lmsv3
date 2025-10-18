@@ -70,8 +70,8 @@ export function Leaderboard() {
 
     if (searchTerm) {
       filtered = filtered.filter(student =>
-        student.full_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        student.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        student.full_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        student.email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
         student.class_name?.toLowerCase().includes(searchTerm.toLowerCase())
       );
     }
@@ -446,7 +446,7 @@ export function Leaderboard() {
                   </Table.Tr>
                 </Table.Thead>
                 <Table.Tbody>
-                  {paginatedStudents.map((student) => (
+                  {paginatedStudents.filter(student => student && student.id).map((student) => (
                       <Table.Tr key={student.id}>
                         <Table.Td>
                           <Group gap="xs" justify="center">
@@ -456,10 +456,10 @@ export function Leaderboard() {
                         <Table.Td>
                           <Group gap="sm">
                             <Avatar size="md" radius="xl" color="blue">
-                              {student.full_name.charAt(0)}
+                              {student.full_name?.charAt(0) || 'S'}
                             </Avatar>
                             <div>
-                              <Text fw={500}>{student.full_name}</Text>
+                              <Text fw={500}>{student.full_name || 'Unknown Student'}</Text>
                               <Text size="sm" c="dimmed">{student.email}</Text>
                             </div>
                           </Group>

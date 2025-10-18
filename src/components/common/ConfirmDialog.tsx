@@ -1,16 +1,19 @@
 import { Modal, Button, Text, Stack, Group } from '@mantine/core';
 import { AlertTriangle } from 'lucide-react';
+import { ReactNode } from 'react';
 
 interface ConfirmDialogProps {
   opened: boolean;
   onClose: () => void;
   onConfirm: () => void;
   title: string;
-  message: string;
+  message: string | ReactNode;
   confirmLabel?: string;
   cancelLabel?: string;
   confirmColor?: string;
   loading?: boolean;
+  confirmLoading?: boolean;
+  closeOnConfirm?: boolean;
 }
 
 export function ConfirmDialog({
@@ -23,6 +26,8 @@ export function ConfirmDialog({
   cancelLabel = 'Cancel',
   confirmColor = 'red',
   loading = false,
+  confirmLoading = false,
+  closeOnConfirm = true,
 }: ConfirmDialogProps) {
   return (
     <Modal
@@ -38,22 +43,32 @@ export function ConfirmDialog({
       size="sm"
     >
       <Stack gap="md">
-        <Text size="sm" c="dimmed">
-          {message}
-        </Text>
+        {typeof message === 'string' ? (
+          <Text size="sm" c="dimmed">
+            {message}
+          </Text>
+        ) : (
+          message
+        )}
         
         <Group justify="flex-end" gap="sm">
           <Button
             variant="subtle"
             onClick={onClose}
-            disabled={loading}
+            disabled={loading || confirmLoading}
           >
             {cancelLabel}
           </Button>
           <Button
             color={confirmColor}
-            onClick={onConfirm}
-            loading={loading}
+            onClick={() => {
+              onConfirm();
+              if (closeOnConfirm) {
+                onClose();
+              }
+            }}
+            loading={confirmLoading}
+            disabled={loading}
           >
             {confirmLabel}
           </Button>
