@@ -111,7 +111,7 @@ export function AssignmentCard({
           <Text fw={600} size="lg" lineClamp={1}>
             {assignment.title}
           </Text>
-          <Text size="sm" c="dimmed" lineClamp={2}>
+          <Text size="sm" c="dimmed" lineClamp={2} style={{ whiteSpace: 'pre-wrap' }}>
             {assignment.description || 'Tidak ada deskripsi'}
           </Text>
         </div>

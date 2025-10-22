@@ -450,7 +450,7 @@ export function StudentDashboard() {
                           key={assignment.id}
                           icon={deadlineStatus.status === 'overdue' ? <IconX size={16} /> : <IconClock size={16} />}
                           color={deadlineStatus.color}
-                          title={assignment.title}
+                          title={assignment.title.replace(/ - [a-f0-9-]+$/, '')}
                           onClick={() => navigate('/student/classroom')}
                           style={{ cursor: 'pointer' }}
                         >
@@ -510,7 +510,7 @@ export function StudentDashboard() {
                         <Timeline.Item
                           key={submission.id}
                           bullet={<IconTrophy size={16} />}
-                          title={submission.assignment.title}
+                          title={submission.assignment.title.replace(/ - [a-f0-9-]+$/, '')}
                         >
                           <Group justify="space-between">
                             <Text size="sm">

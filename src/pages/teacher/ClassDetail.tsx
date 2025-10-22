@@ -150,7 +150,7 @@ export function ClassDetail() {
             {classData.description && (
               <div>
                 <Text size="sm" c="dimmed">Deskripsi</Text>
-                <Text>{classData.description}</Text>
+                <Text style={{ whiteSpace: 'pre-wrap' }}>{classData.description}</Text>
               </div>
             )}
           </Stack>

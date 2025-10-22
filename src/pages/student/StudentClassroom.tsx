@@ -36,6 +36,7 @@ import {
   IconPresentation,
   IconUpload,
   IconEye,
+  IconX,
 } from '@tabler/icons-react';
 import { useStudentAuth } from '../../contexts/StudentAuthContext';
 import { LoadingSpinner, EmptyState, Pagination, usePagination } from '../../components';
@@ -43,6 +44,7 @@ import { notifications } from '@mantine/notifications';
 import { formatGrade } from '../../utils/romanNumerals';
 import { supabase } from '../../lib/supabase';
 import { materialService } from '../../services/materialService';
+import { submissionService } from '../../services/submissionService';
 import dayjs from 'dayjs';
 
 interface ClassInfo {
@@ -182,6 +184,7 @@ export function StudentClassroom() {
   const [submissionDriveLink, setSubmissionDriveLink] = useState('');
   const [submissionText, setSubmissionText] = useState('');
   const [submitting, setSubmitting] = useState(false);
+  const [cancelling, setCancelling] = useState(false);
 
   useEffect(() => {
     loadData();
@@ -484,6 +487,8 @@ export function StudentClassroom() {
         console.error('Error loading submissions:', submissionsError);
       }
 
+      console.log('Loaded submissions:', submissionsData);
+
       // Get teacher and class info for each assignment
       const assignmentsWithDetails = await Promise.all(
         (assignmentsData || []).map(async (assignment) => {
@@ -517,6 +522,7 @@ export function StudentClassroom() {
         })
       );
 
+      console.log('Assignments with submissions:', assignmentsWithDetails);
       return assignmentsWithDetails;
     } catch (error) {
       console.error('Error loading assignments:', error);
@@ -550,16 +556,18 @@ export function StudentClassroom() {
     try {
       setSubmitting(true);
 
-      // Update existing submission record with drive link
+      // Upsert submission record with drive link
       const { error: submissionError } = await supabase
         .from('submissions')
-        .update({
+        .upsert({
+          assignment_id: selectedAssignment.id,
+          student_id: student.id,
           status: 'submitted',
           submitted_at: new Date().toISOString(),
           drive_link: submissionDriveLink.trim()
-        })
-        .eq('assignment_id', selectedAssignment.id)
-        .eq('student_id', student.id);
+        }, {
+          onConflict: 'assignment_id,student_id'
+        });
 
       if (submissionError) {
         console.error('Submission error details:', submissionError);
@@ -589,6 +597,32 @@ export function StudentClassroom() {
       });
     } finally {
       setSubmitting(false);
+    }
+  };
+
+  const handleCancelSubmission = async (assignment: Assignment) => {
+    if (!assignment.submission || !student) return;
+
+    try {
+      setCancelling(true);
+      await submissionService.cancelSubmission(assignment.submission.id, student.id);
+      
+      notifications.show({
+        title: 'Berhasil',
+        message: 'Submission berhasil dibatalkan',
+        color: 'green',
+      });
+
+      await loadData();
+    } catch (error) {
+      console.error('Error cancelling submission:', error);
+      notifications.show({
+        title: 'Error',
+        message: 'Gagal membatalkan submission',
+        color: 'red',
+      });
+    } finally {
+      setCancelling(false);
     }
   };
 
@@ -761,7 +795,7 @@ export function StudentClassroom() {
                         <Paper key={assignment.id} p="sm" withBorder radius="md">
                           <Group justify="space-between">
                             <div>
-                              <Text fw={500} size="sm">{assignment.title}</Text>
+                              <Text fw={500} size="sm">{assignment.title.replace(/ - [a-f0-9-]+$/, '')}</Text>
                               <Text size="xs" c="dimmed">
                                 {dayjs(assignment.deadline).format('DD MMM YYYY')}
                               </Text>
@@ -876,7 +910,7 @@ export function StudentClassroom() {
                           <Table.Tr key={assignment.id}>
                             <Table.Td>
                               <div>
-                                <Text fw={500}>{assignment.title}</Text>
+                                <Text fw={500}>{assignment.title.replace(/ - [a-f0-9-]+$/, '')}</Text>
                                 <Text size="xs" c="dimmed">
                                   {assignment.class.name} • {assignment.assignment_type}
                                 </Text>
@@ -925,6 +959,18 @@ export function StudentClassroom() {
                                     }}
                                   >
                                     Kumpulkan
+                                  </Button>
+                                )}
+                                {assignment.submission && assignment.submission.status === 'submitted' && (
+                                  <Button
+                                    size="xs"
+                                    variant="light"
+                                    color="red"
+                                    leftSection={<IconX size={14} />}
+                                    onClick={() => handleCancelSubmission(assignment)}
+                                    loading={cancelling}
+                                  >
+                                    Batal
                                   </Button>
                                 )}
                               </Group>
@@ -1112,14 +1158,14 @@ export function StudentClassroom() {
             setSubmissionDriveLink('');
             setSubmissionText('');
           }}
-          title={selectedAssignment?.title}
+          title={selectedAssignment?.title?.replace(/ - [a-f0-9-]+$/, '')}
           size="lg"
         >
           {selectedAssignment && (
             <Stack gap="md">
               <div>
                 <Text fw={600} mb="xs">Deskripsi Tugas:</Text>
-                <Text size="sm" c="dimmed">
+                <Text size="sm" c="dimmed" style={{ whiteSpace: 'pre-wrap' }}>
                   {selectedAssignment.description || 'Tidak ada deskripsi'}
                 </Text>
               </div>
